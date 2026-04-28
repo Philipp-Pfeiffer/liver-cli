@@ -14,10 +14,10 @@ export function performAutoClose(db: Database.Database): number | null {
   const profile = requireProfile(db, 'auto-close');
 
   const lastDrink = db.prepare(
-    'SELECT * FROM drinks WHERE session_id = ? ORDER BY finished_at DESC LIMIT 1'
-  ).get(session.id) as { finished_at: string | null } | undefined;
+    'SELECT * FROM drinks WHERE session_id = ? AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1'
+  ).get(session.id) as { finished_at: string } | undefined;
 
-  if (!lastDrink || !lastDrink.finished_at) return null;
+  if (!lastDrink) return null;
 
   const formula = (profile.preferred_formula ?? 'watson') as BACFormula;
   const engineProfile = profileToEngine(profile);
@@ -34,10 +34,12 @@ export function performAutoClose(db: Database.Database): number | null {
   const soberAt = new Date(lastFinishedAt.getTime() + minutesUntil * 60000);
 
   if (now >= soberAt) {
-    db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(
-      formatISOUTC(soberAt),
-      session.id,
-    );
+    db.transaction(() => {
+      db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(
+        formatISOUTC(soberAt),
+        session.id,
+      );
+    })();
     return session.id;
   }
 

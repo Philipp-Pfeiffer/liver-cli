@@ -14,7 +14,7 @@ export function calculateBAC(
 ): number {
   if (drinks.length === 0) return 0;
   
-  const r = profile.sex === 'female' ? 0.55 : 0.68;
+  const r = profile.sex === 'female' ? 0.55 : profile.sex === 'other' ? 0.615 : 0.68;
   const bodyWater = profile.weightKg * r;
   
   let totalAlcohol = 0;

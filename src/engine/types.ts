@@ -1,4 +1,4 @@
-export type Sex = 'male' | 'female';
+export type Sex = 'male' | 'female' | 'other';
 export type BACFormula = 'watson' | 'widmark';
 
 export interface ProfileParams {

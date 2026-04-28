@@ -11,7 +11,7 @@ function profileToEngine(profile: { weight_kg: number; height_cm: number; sex: s
   return {
     weightKg: profile.weight_kg,
     heightCm: profile.height_cm,
-    sex: profile.sex === 'f' ? 'female' : 'male',
+    sex: profile.sex === 'f' ? 'female' : profile.sex === 'o' ? 'other' : 'male',
     age: profile.age,
   };
 }
