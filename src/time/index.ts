@@ -1,0 +1,90 @@
+import * as chrono from 'chrono-node';
+
+const TIMEZONE = 'Europe/Berlin';
+
+export function parseTimestamp(input: string, referenceDate: Date = new Date()): Date {
+  const results = chrono.parse(input, referenceDate, { forwardDate: false });
+  
+  if (results.length === 0) {
+    throw new Error(`BAD_TIME_FORMAT`);
+  }
+  
+  const result = results[0];
+  let date = result.start.date();
+  
+  if (!result.start.isCertain('year') && !result.start.isCertain('month') && !result.start.isCertain('day')) {
+    const today = new Date(referenceDate);
+    today.setHours(date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
+    
+    if (today > referenceDate) {
+      today.setDate(today.getDate() - 1);
+    }
+    date = today;
+  }
+  
+  return date;
+}
+
+export function formatISOUTC(date: Date): string {
+  return date.toISOString();
+}
+
+export function formatISOLocal(date: Date): string {
+  const tzOffset = -date.getTimezoneOffset();
+  const absOffset = Math.abs(tzOffset);
+  const hours = Math.floor(absOffset / 60).toString().padStart(2, '0');
+  const minutes = (absOffset % 60).toString().padStart(2, '0');
+  const sign = tzOffset >= 0 ? '+' : '-';
+  
+  const iso = date.toISOString();
+  return iso.slice(0, -1) + sign + hours + ':' + minutes;
+}
+
+export function formatHumanTime(date: Date): string {
+  return date.toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: TIMEZONE,
+  });
+}
+
+export function formatHumanDate(date: Date): string {
+  return date.toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: TIMEZONE,
+  });
+}
+
+export function nowUTC(): Date {
+  return new Date();
+}
+
+export function parseDuration(input: string): number {
+  const match = input.match(/^(\d+)(m|h)$/);
+  if (!match) {
+    if (input === '0') return 0;
+    throw new Error('INVALID_DURATION');
+  }
+  
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  
+  let minutes: number;
+  if (unit === 'm') {
+    minutes = value;
+  } else {
+    minutes = value * 60;
+  }
+  
+  if (minutes < 0 || minutes > 24 * 60) {
+    throw new Error('INVALID_DURATION');
+  }
+  
+  return minutes;
+}
+
+export function minutesBetween(from: Date, to: Date): number {
+  return (to.getTime() - from.getTime()) / (1000 * 60);
+}
