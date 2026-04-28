@@ -1,0 +1,27 @@
+Usage: liver [options] [command]
+
+BAC tracking CLI
+
+Options:
+  -V, --version             output the version number
+  --human                   Human-readable output
+  --no-color                Disable colors
+  -v, --verbose             Verbose logging
+  --formula <formula>       BAC formula override (watson|widmark)
+  -h, --help                display help for command
+
+Commands:
+  profile
+  preset
+  session
+  add [options] [preset]    Add a drink
+  start [options] [preset]  Start drinking
+  stop [options]            Stop current drink
+  drink
+  status                    Current BAC status
+  bac [options]             BAC at specific time
+  curve [options]           BAC curve
+  sober                     Time until sober
+  stats [options]           Drinking statistics
+  config
+  help [command]            display help for command

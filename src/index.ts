@@ -10,7 +10,7 @@ import { getConfig, setConfig, listConfig } from './config/index.js';
 import { performAutoClose } from './commands/auto-close.js';
 import { configureOutput, outputSuccess, outputError, logVerbose } from './output/index.js';
 import { parseTimestamp } from './time/index.js';
-import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, CURVE_TOO_LARGE, INVALID_CONFIG_KEY, CONFIG_FILE_CORRUPT } from './errors/index.js';
+import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, CURVE_TOO_LARGE, INVALID_CONFIG_KEY, CONFIG_FILE_CORRUPT, INVALID_VOLUME, INVALID_ABV } from './errors/index.js';
 import type { OutputOptions } from './output/index.js';
 import type { BACFormula } from './engine/types.js';
 
@@ -282,21 +282,43 @@ sessionCmd
 
 // Drink Commands
 program
-  .command('add <preset>')
-  .description('Add a drink from preset')
+  .command('add [preset]')
+  .description('Add a drink')
+  .option('--vol <ml>', 'Volume in ml', parseFloat)
+  .option('--abv <pct>', 'ABV in percent', parseFloat)
   .option('--at <T>', 'Time')
   .option('--duration <Xm|Xh>', 'Duration')
   .action((preset, options, cmd) => {
     handleCommand(() => {
       const db = initDb();
-      const presetData = getPreset(db, preset);
+      let volumeMl: number;
+      let abv: number;
+      let presetName: string | undefined;
+      
+      if (preset) {
+        if (options.vol !== undefined || options.abv !== undefined) {
+          db.close();
+          throw INVALID_VOLUME();
+        }
+        const presetData = getPreset(db, preset);
+        volumeMl = presetData.volume_ml;
+        abv = presetData.abv;
+        presetName = presetData.name;
+      } else if (options.vol !== undefined && options.abv !== undefined) {
+        volumeMl = options.vol;
+        abv = options.abv;
+      } else {
+        db.close();
+        throw INVALID_VOLUME();
+      }
+      
       const at = options.at ? parseTimestamp(options.at) : undefined;
       const result = addDrink(db, {
-        volumeMl: presetData.volume_ml,
-        abv: presetData.abv,
+        volumeMl,
+        abv,
         at,
         duration: options.duration,
-        presetName: presetData.name,
+        presetName,
       });
       db.close();
       return result;
@@ -304,55 +326,40 @@ program
   });
 
 program
-  .command('add-raw')
-  .description('Add a drink with explicit volume and ABV')
-  .requiredOption('--vol <ml>', 'Volume in ml', parseFloat)
-  .requiredOption('--abv <pct>', 'ABV in percent', parseFloat)
-  .option('--at <T>', 'Time')
-  .option('--duration <Xm|Xh>', 'Duration')
-  .action((options, cmd) => {
+  .command('start [preset]')
+  .description('Start drinking')
+  .option('--vol <ml>', 'Volume in ml', parseFloat)
+  .option('--abv <pct>', 'ABV in percent', parseFloat)
+  .option('--force', 'Force start (stop current drink)')
+  .action((preset, options, cmd) => {
     handleCommand(() => {
       const db = initDb();
-      const at = options.at ? parseTimestamp(options.at) : undefined;
-      const result = addDrink(db, {
-        volumeMl: options.vol,
-        abv: options.abv,
-        at,
-        duration: options.duration,
-      });
-      db.close();
-      return result;
-    }, cmd);
-  });
-
-program
-  .command('start <preset>')
-  .description('Start drinking a preset')
-  .action((preset, _options, cmd) => {
-    handleCommand(() => {
-      const db = initDb();
-      const presetData = getPreset(db, preset);
+      let volumeMl: number;
+      let abv: number;
+      let presetName: string | undefined;
+      
+      if (preset) {
+        if (options.vol !== undefined || options.abv !== undefined) {
+          db.close();
+          throw INVALID_VOLUME();
+        }
+        const presetData = getPreset(db, preset);
+        volumeMl = presetData.volume_ml;
+        abv = presetData.abv;
+        presetName = presetData.name;
+      } else if (options.vol !== undefined && options.abv !== undefined) {
+        volumeMl = options.vol;
+        abv = options.abv;
+      } else {
+        db.close();
+        throw INVALID_VOLUME();
+      }
+      
       const result = startDrink(db, {
-        volumeMl: presetData.volume_ml,
-        abv: presetData.abv,
-        presetName: presetData.name,
-      });
-      db.close();
-      return result;
-    }, cmd);
-  });
-
-program
-  .command('start-raw')
-  .description('Start drinking with explicit volume and ABV')
-  .requiredOption('--vol <ml>', 'Volume in ml', parseFloat)
-  .requiredOption('--abv <pct>', 'ABV in percent', parseFloat)
-  .action((options, cmd) => {
-    handleCommand(() => {
-      const db = initDb();
-      const result = startDrink(db, {
-        volumeMl: options.vol,
-        abv: options.abv,
+        volumeMl,
+        abv,
+        presetName,
+        force: options.force,
       });
       db.close();
       return result;
@@ -373,8 +380,10 @@ program
     }, cmd);
   });
 
-program
-  .command('drink:list')
+const drinkCmd = program.command('drink');
+
+drinkCmd
+  .command('list')
   .description('List all drinks')
   .action((_options, cmd) => {
     handleCommand(() => {
@@ -385,8 +394,8 @@ program
     }, cmd);
   });
 
-program
-  .command('drink:rm <id>')
+drinkCmd
+  .command('rm <id>')
   .description('Remove a drink')
   .action((id, _options, cmd) => {
     handleCommand(() => {

@@ -183,15 +183,3 @@ export function resolveStomachStateAt(
   return session?.stomach_initial ?? 'some';
 }
 
-export function autoCloseSession(db: Database.Database): number | null {
-  const session = getActiveSession(db);
-  if (!session) return null;
-  
-  const lastDrink = db.prepare(
-    'SELECT * FROM drinks WHERE session_id = ? ORDER BY finished_at DESC LIMIT 1'
-  ).get(session.id) as { finished_at: string } | undefined;
-  
-  if (!lastDrink) return null;
-  
-  return null;
-}

@@ -43,13 +43,24 @@ export function getConfig(key: string): unknown {
   return config[key];
 }
 
+function parseConfigValue(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 export function setConfig(key: string, value: unknown): void {
   if (!ALLOWED_KEYS.includes(key)) {
     throw new Error('INVALID_CONFIG_KEY');
   }
   
   const config = loadConfig();
-  config[key] = value;
+  config[key] = parseConfigValue(value);
   saveConfig(config);
 }
 

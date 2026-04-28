@@ -8,6 +8,10 @@ import {
 } from '../errors/index.js';
 import { formatISOUTC, nowUTC, parseDuration } from '../time/index.js';
 import { requireActiveSession, resolveStomachStateAt } from './session.js';
+import { requireProfile } from './profile.js';
+import { profileToEngine, drinksToEngine } from './compute.js';
+import { calculateBACAtOffset } from '../engine/index.js';
+import type { BACFormula } from '../engine/types.js';
 import type { PresetData } from './preset.js';
 
 export interface DrinkData {
@@ -20,6 +24,26 @@ export interface DrinkData {
   preset_name: string | null;
 }
 
+function computeBACAfter(
+  db: Database.Database,
+  sessionId: number,
+): number {
+  const profile = requireProfile(db, 'add');
+  const formula = (profile.preferred_formula ?? 'watson') as BACFormula;
+  const engineProfile = profileToEngine(profile);
+  
+  const drinks = db.prepare(
+    'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
+  ).all(sessionId) as DrinkData[];
+  
+  const now = nowUTC();
+  const engineDrinks = drinksToEngine(db, drinks, now);
+  const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
+  const bacPromille = bacPercent * 10;
+  
+  return Math.round(bacPromille * 100) / 100;
+}
+
 export function addDrink(
   db: Database.Database,
   options: {
@@ -29,7 +53,7 @@ export function addDrink(
     duration?: string;
     presetName?: string;
   },
-): { drink_id: number; session_id: number; started_at: string; finished_at: string; volume_ml: number; abv: number; preset_name: string | null; stomach_state: string } {
+): { drink_id: number; session_id: number; started_at: string; finished_at: string; volume_ml: number; abv: number; preset_name: string | null; stomach_state: string; bac_after_promille: number } {
   validateVolume(options.volumeMl);
   validateABV(options.abv);
   
@@ -57,6 +81,8 @@ export function addDrink(
     options.presetName ?? null,
   );
   
+  const bacAfter = computeBACAfter(db, session.id);
+  
   return {
     drink_id: result.lastInsertRowid as number,
     session_id: session.id,
@@ -66,6 +92,7 @@ export function addDrink(
     abv: options.abv,
     preset_name: options.presetName ?? null,
     stomach_state: stomachState,
+    bac_after_promille: bacAfter,
   };
 }
 
@@ -75,8 +102,9 @@ export function startDrink(
     volumeMl: number;
     abv: number;
     presetName?: string;
+    force?: boolean;
   },
-): { drink_id: number; session_id: number; started_at: string; volume_ml: number; abv: number; preset_name: string | null; stomach_state: string } {
+): { drink_id: number; session_id: number; started_at: string; volume_ml: number; abv: number; preset_name: string | null; stomach_state: string; bac_after_promille: number } {
   validateVolume(options.volumeMl);
   validateABV(options.abv);
   
@@ -87,31 +115,42 @@ export function startDrink(
     'SELECT * FROM drinks WHERE session_id = ? AND finished_at IS NULL'
   ).get(session.id) as DrinkData | undefined;
   
-  if (runningDrink) {
+  if (runningDrink && !options.force) {
     throw DRINK_ALREADY_RUNNING();
   }
   
   const stomachState = resolveStomachStateAt(db, session.id, at);
   
-  const result = db.prepare(
-    'INSERT INTO drinks (session_id, started_at, finished_at, volume_ml, abv, preset_name) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(
-    session.id,
-    formatISOUTC(at),
-    null,
-    options.volumeMl,
-    options.abv,
-    options.presetName ?? null,
-  );
+  let result: Database.RunResult;
   
+  db.transaction(() => {
+    if (runningDrink && options.force) {
+      db.prepare('UPDATE drinks SET finished_at = ? WHERE id = ?').run(formatISOUTC(at), runningDrink.id);
+    }
+    
+    result = db.prepare(
+      'INSERT INTO drinks (session_id, started_at, finished_at, volume_ml, abv, preset_name) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(
+      session.id,
+      formatISOUTC(at),
+      null,
+      options.volumeMl,
+      options.abv,
+      options.presetName ?? null,
+    );
+  })();
+  
+  const bacAfter = computeBACAfter(db, session.id);
+
   return {
-    drink_id: result.lastInsertRowid as number,
+    drink_id: result!.lastInsertRowid as number,
     session_id: session.id,
     started_at: formatISOUTC(at),
     volume_ml: options.volumeMl,
     abv: options.abv,
     preset_name: options.presetName ?? null,
     stomach_state: stomachState,
+    bac_after_promille: bacAfter,
   };
 }
 
