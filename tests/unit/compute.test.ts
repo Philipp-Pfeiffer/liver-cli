@@ -29,7 +29,8 @@ describe('computation commands', () => {
   it('should calculate BAC at specific time', () => {
     addDrink(db, { volumeMl: 500, abv: 5.2 });
     const now = new Date();
-    const result = getBACAt(db, now);
+    // Ensure 'now' is after the drink was added
+    const result = getBACAt(db, new Date(now.getTime() + 1000));
 
     expect(result.bac_promille).toBeGreaterThan(0);
     expect(result.zone).toBeDefined();

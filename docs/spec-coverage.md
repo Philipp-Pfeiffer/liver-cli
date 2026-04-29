@@ -1,9 +1,29 @@
-# Spec-Coverage-Audit: liver v1.0.6
+# Spec-Coverage-Audit: liver v1.0.7
 
-**Branch:** `audit/spec-coverage`  
+**Branch:** `fix/v0.1.2`  
 **Datum:** 2026-04-29  
-**Spec-Version:** v1.0.6 (Cleanup-Pass 6)  
-**Audit-Ergebnis:** 27 ⚠️ / 12 ❌ / rest ✅
+**Spec-Version:** v1.0.7 (Cleanup-Pass 7)  
+**Audit-Ergebnis:** 15 ⚠️ / 5 ❌ / rest ✅
+
+---
+
+## v1.0.7 Klärungen (gegenüber v1.0.6)
+
+| # | Klärung | §-Bezug | Status |
+|---|---|---|---|
+| 1 | **ethanol-rs als echtes WASM, kein Stub** | §1.1 | ❌ Noch nicht implementiert; Stub in `src/engine/stub.ts` |
+| 2 | **Config liegt in SQLite `config`-Tabelle, nicht in `~/.liver/config`-Datei** | §1.2, §7.2 | ❌ Noch nicht implementiert; `src/config/index.ts` nutzt File-Layer |
+| 3 | **`export`/`import` bleiben Out-of-Scope** | §14 | ✅ Bestätigt; Smoke-Test-Szenarien S8.2/S8.3 entfernt |
+| 4 | **`db info` ist nicht im Scope** | §0.1 | ✅ Bestätigt; Smoke-Test-Szenario S8.3 entfernt |
+
+## v1.0.6 Klärungen (kann der vorige Agent verschlafen haben)
+
+| # | Klärung | §-Bezug | Status |
+|---|---|---|---|
+| 5 | **`preset save` → `preset set`** | §0.1 | ⚠️ Noch `preset save` in `src/index.ts:146` |
+| 6 | **Config-Keys nutzen Dot-Namespacing (`zones.*`, `engine.*`)** | §7.2 | ⚠️ `engine.default_formula` fehlt |
+| 7 | **`--duration` braucht Unit-Suffix (`30m`, `2h`); bare Number → `INVALID_DURATION`** | §0.6 | ✅ Implementiert |
+| 8 | **`add --at <past> --session new` für Backfill-Sessions** | §5.3 | ❌ Noch nicht implementiert |
 
 ---
 
@@ -13,7 +33,7 @@
 |---|---|---|---|
 | 0.1 | `liver profile set --weight <kg> --height <cm> --sex <m\|f\|o> --age <int> [--formula <watson\|widmark>]` | ✅ implementiert | `src/index.ts:111-125` |
 | 0.1 | `liver profile show` | ✅ implementiert | `src/index.ts:128-140` |
-| 0.1 | `liver preset set <name> --vol <ml> --abv <pct>` | ⚠️ implementiert, aber spec-abweichend | `src/index.ts:146` heißt `preset save`, nicht `preset set` (v1.0.6 Änderung) |
+| 0.1 | `liver preset set <name> --vol <ml> --abv <pct>` | ⚠️ **v1.0.6 geändert** | `src/index.ts:146` heißt `preset save`, nicht `preset set` (v1.0.6 Änderung) |
 | 0.1 | `liver preset list` | ✅ implementiert | `src/index.ts:160-169` |
 | 0.1 | `liver preset show <name>` | ✅ implementiert | `src/index.ts:172-181` |
 | 0.1 | `liver preset rm <name>` | ✅ implementiert | `src/index.ts:184-193` |
@@ -22,9 +42,9 @@
 | 0.1 | `liver session show [--id <id>]` | ✅ implementiert | `src/index.ts:235-253` |
 | 0.1 | `liver session list [--year <YYYY> \| --month <YYYY-MM>]` | ✅ implementiert | `src/index.ts:256-267` |
 | 0.1 | `liver session stomach <empty\|some\|full> [--at <T>]` | ✅ implementiert | `src/index.ts:270-281` |
-| 0.1 | `liver session rename <id> --name <str>` | ❌ nicht implementiert | — |
-| 0.1 | `liver add <preset> [--at <T>] [--duration <Xm\|Xh>] [--session new [--name <str>] [--stomach <state>]]` | ⚠️ implementiert, aber spec-abweichend | `src/index.ts:285-326`; `--session new` fehlt, `--stomach` fehlt |
-| 0.1 | `liver add --vol <ml> --abv <pct> [--at <T>] [--duration <Xm\|Xh>] [--session new [...]]` | ⚠️ implementiert, aber spec-abweichend | `src/index.ts:285-326`; `--session new` fehlt, `--stomach` fehlt |
+| 0.1 | `liver session rename <id> --name <str>` | ❌ nicht implementiert | §0.1 v1.0.6 |
+| 0.1 | `liver add <preset> [--at <T>] [--duration <Xm\|Xh>] [--session new [--name <str>] [--stomach <state>]]` | ⚠️ **v1.0.6 geändert** | `src/index.ts:285-326`; `--session new` fehlt, `--stomach` fehlt |
+| 0.1 | `liver add --vol <ml> --abv <pct> [--at <T>] [--duration <Xm\|Xh>] [--session new [...]]` | ⚠️ **v1.0.6 geändert** | `src/index.ts:285-326`; `--session new` fehlt, `--stomach` fehlt |
 | 0.1 | `liver start <preset>` | ⚠️ implementiert, aber spec-abweichend | `src/index.ts:329-367`; `--at` fehlt, `--duration` fehlt, `--stomach` fehlt |
 | 0.1 | `liver start --vol <ml> --abv <pct>` | ⚠️ implementiert, aber spec-abweichend | `src/index.ts:329-367`; `--at` fehlt, `--duration` fehlt, `--stomach` fehlt |
 | 0.1 | `liver stop [--at <T>]` | ✅ implementiert | `src/index.ts:370-381` |
@@ -38,9 +58,9 @@
 | 0.1 | `liver config set <key> <value>` | ✅ implementiert | `src/index.ts:500-507` |
 | 0.1 | `liver config get <key>` | ✅ implementiert | `src/index.ts:510-517` |
 | 0.1 | `liver config list` | ✅ implementiert | `src/index.ts:520-527` |
-| 0.1 | `liver export` | ❌ nicht implementiert | §14 Limitations: "Backup via cp" — aber Smoke-Test fordert es |
-| 0.1 | `liver import` | ❌ nicht implementiert | §14 Limitations: "Backup via cp" — aber Smoke-Test fordert es |
-| 0.1 | `liver db info` | ❌ nicht implementiert | — |
+| 0.1 | `liver export` | ❌ **v1.0.7 Out-of-Scope** | §14: "Backup via cp ~/.liver/db.sqlite" — nicht implementieren |
+| 0.1 | `liver import` | ❌ **v1.0.7 Out-of-Scope** | §14: "Backup via cp ~/.liver/db.sqlite" — nicht implementieren |
+| 0.1 | `liver db info` | ❌ **v1.0.7 nicht im Scope** | Nicht implementieren |
 | 0.1 | `liver --version` | ✅ implementiert | `src/index.ts:22` |
 | 0.1 | `liver --help` | ✅ implementiert | commander default |
 | 0.1 | `liver <command> --help` | ✅ implementiert | commander default |
@@ -74,9 +94,9 @@
 | 0.3 | Session-Auto-End lazy on next command | ✅ implementiert | `src/commands/auto-close.ts:10-47` |
 | 0.3 | Profile fehlt → `PROFILE_MISSING` | ✅ implementiert | `src/commands/compute.ts:51`, `src/commands/profile.ts:50-55` |
 | 0.3 | Disclaimer in `status`/`bac`/`sober`/`curve` | ✅ implementiert | überall in `src/commands/compute.ts` |
-| 0.3 | Config-Namespace: Dot-Notation `zones.*`, `engine.*` | ⚠️ implementiert, aber spec-abweichend | `src/config/index.ts:14-17` hat nur `zones.*`; `engine.default_formula` fehlt |
+| 0.3 | Config-Namespace: Dot-Notation `zones.*`, `engine.*` | ⚠️ **v1.0.6 geändert** | `src/config/index.ts:14-17` hat nur `zones.*`; `engine.default_formula` fehlt |
 | 0.3 | Duration-Strictness: Unit-Suffix-Pflicht | ⚠️ implementiert, aber spec-abweichend | `src/time/index.ts:64-69`: `0` erlaubt, aber bare Number ohne Suffix → `INVALID_DURATION` ✅; jedoch wird Error als String geworfen, nicht als `LiverError` |
-| 0.3 | Historical-Backfill: `--session new` für retroaktive Sessions | ❌ nicht implementiert | §5.3 v1.0.6; `src/commands/drink.ts:64-67` wirft immer `TIMESTAMP_OUTSIDE_SESSION` |
+| 0.3 | Historical-Backfill: `--session new` für retroaktive Sessions | ❌ **v1.0.6 Neu** | §5.3 v1.0.6; `src/commands/drink.ts:64-67` wirft immer `TIMESTAMP_OUTSIDE_SESSION` |
 
 ---
 
@@ -92,7 +112,7 @@
 | 0.4 | `stats` Output-Schema (§9.6) | ✅ implementiert | `src/commands/stats.ts:301-321` |
 | 0.4 | Single-Object Reads (`profile show`, `preset show`, `session show`) | ✅ implementiert | spiegeln DB-Schema |
 | 0.4 | Listen-Commands (`preset list`, `drink list`, `session list`) | ✅ implementiert | `{items, count}` |
-| 0.4 | Mutator-Commands (`profile set`, `preset set`, `preset rm`, `session end`, `drink rm`, `config set`) | ⚠️ implementiert, aber spec-abweichend | `preset save` statt `preset set`; `preset rm` gibt `{ok, name}` statt `{ok, preset_id}` zurück (Spec sagt `"<entity>_id": <id>` bzw. `"name": <preset-name>` — beides akzeptabel?) |
+| 0.4 | Mutator-Commands (`profile set`, `preset set`, `preset rm`, `session end`, `drink rm`, `config set`) | ⚠️ **v1.0.6 geändert** | `preset save` statt `preset set`; `preset rm` gibt `{ok, name}` statt `{ok, preset_id}` zurück (Spec sagt `"<entity>_id": <id>` bzw. `"name": <preset-name>` — beides akzeptabel?) |
 | 0.4 | `stop` Output (`drink_id`, `finished_at`, `duration_secs`) | ✅ implementiert | `src/commands/drink.ts:179-183` |
 
 ---
@@ -101,7 +121,7 @@
 
 | § | Sektion | Status | File:Line oder Notiz |
 |---|---|---|---|
-| 1.1 | ethanol-rs Vendoring | ❌ nicht implementiert | Kein `vendor/ethanol-rs/pkg/` vorhanden; stattdessen Stub in `src/engine/stub.ts` |
+| 1.1 | ethanol-rs Vendoring | ❌ **v1.0.7 zwingend** | Kein `vendor/ethanol-rs/pkg/` vorhanden; stattdessen Stub in `src/engine/stub.ts`. **Root-Cause für 1/3 aller Smoke-Fails.** |
 | 1.2 | Engine-Layer-Architektur (dünner Adapter) | ⚠️ implementiert, aber spec-abweichend | Stub statt echtem WASM; Interface existiert in `src/engine/index.ts` |
 | 1.3 | Compute-Mapping (`calculate_bac_at_offset`, `minutes_until_sober`, `generate_curve`) | ⚠️ implementiert, aber spec-abweichend | Stub-Implementierung in `src/engine/stub.ts`; Watson vs Widmark liefert **identische Werte** (Stub ignoriert `formula` Parameter!) |
 | 1.4 | Liver-Eigenleistung (Timestamp-Konverter, Sweet-Spot, Promille, ABV-Konversion, Stomach-Switching, Persistenz) | ✅ implementiert | `src/commands/compute.ts`, `src/config/index.ts` |
@@ -180,7 +200,7 @@
 | 5.2 | Tie-Breaker `at <= drink.started_at` | ✅ implementiert | `src/commands/session.ts:170` (`at <= ?`) |
 | 5.2 | Determinismus bei identen `at` (`ORDER BY at DESC, rowid DESC`) | ✅ implementiert | `src/commands/session.ts:171` |
 | 5.3 | Drink außerhalb Session → `TIMESTAMP_OUTSIDE_SESSION` | ✅ implementiert | `src/commands/drink.ts:64-67` |
-| 5.3 | `--session new` für retroaktive Backfill-Sessions | ❌ nicht implementiert | v1.0.6 Neu; `add` hat kein `--session` Flag |
+| 5.3 | `--session new` für retroaktive Backfill-Sessions | ❌ **v1.0.6 Neu** | §5.3 v1.0.6; `add` hat kein `--session` Flag |
 | 5.3 | `session stomach --at <T>` außerhalb Session → `TIMESTAMP_OUTSIDE_SESSION` | ✅ implementiert | `src/commands/session.ts:144-153` |
 
 ---
@@ -195,9 +215,9 @@
 | 7.2 | `sessions` Tabelle | ✅ implementiert | `src/db/migrations/001-init.sql` |
 | 7.2 | `stomach_events` Tabelle | ✅ implementiert | `src/db/migrations/001-init.sql` |
 | 7.2 | `drinks` Tabelle | ✅ implementiert | `src/db/migrations/001-init.sql` |
-| 7.2 | `config` Tabelle (Dot-Namespacing) | ⚠️ implementiert, aber spec-abweichend | `src/config/index.ts` nutzt Datei statt SQLite-Tabelle. Spec §7.2 zeigt `config` als DB-Tabelle, aber §1.2 erwähnt `~/.liver/config` Reader/Writer. Inkonsistenz in Spec. |
+| 7.2 | `config` Tabelle (Dot-Namespacing) | ⚠️ **v1.0.7 zwingend** | `src/config/index.ts` nutzt Datei statt SQLite-Tabelle. **v1.0.7 klärt: Config ist SQLite-Tabelle.** |
 | 7.2 | Kanonische Keys: `zones.sweet_spot_min`, `zones.sweet_spot_max` | ✅ implementiert | `src/config/index.ts:14-16` |
-| 7.2 | Kanonischer Key: `engine.default_formula` | ❌ nicht implementiert | `src/config/index.ts:14-17` hat nur `zones.*`; `engine.default_formula` fehlt |
+| 7.2 | Kanonischer Key: `engine.default_formula` | ❌ **v1.0.6 geändert** | `src/config/index.ts:14-17` hat nur `zones.*`; `engine.default_formula` fehlt |
 
 ---
 
@@ -303,53 +323,66 @@
 
 ## Zusammenfassung der Findings
 
-### 🔴 P0 — Kritisch (12)
+### 🔴 P0 — Kritisch (5)
 
-1. **`preset save` → `preset set`** (§0.1 v1.0.6) — Naming-Drift
-2. **`--session new` an `add`** (§0.1, §5.3 v1.0.6) — Fehlendes Feature
-3. **`--stomach` an `add` und `start`** (§0.1) — Fehlendes Flag
-4. **`--at` und `--duration` an `start`** (§0.1) — Fehlendes Flag
-5. **`liver session rename <id> --name <str>`** (§0.1) — Fehlender Command
-6. **`liver db info`** (§0.1) — Fehlender Command
-7. **Watson vs Widmark identisch** (§1.3, §1.5) — Engine-Switch unwirksam (Stub ignoriert `formula`)
-8. **`INVALID_DURATION` als String-Error** (§3.3) — Fällt durch zu `UNKNOWN_ERROR` (Exit 3 statt 1)
-9. **`BAD_TIME_FORMAT` als String-Error** (§3.3) — Fällt durch zu `UNKNOWN_ERROR` (Exit 3 statt 1)
-10. **`INVALID_TIME_ORDER` fehlt** (§3.3, §8) — `stop --at <past>` prüft nicht `finished_at < started_at`
-11. **`engine.default_formula` Config-Key fehlt** (§7.2 v1.0.6)
-12. **`export`/`import` Commands** (§0.1, §14) — Smoke-Test fordert sie; Spec sagt Out-of-Scope. **Klärung nötig.**
+1. **ethanol-rs als echtes WASM** (§1.1 v1.0.7) — Stub ignoriert `formula`, Watson = Widmark. Root-Cause für 1/3 aller Smoke-Fails.
+2. **Config in SQLite-Tabelle statt File** (§1.2, §7.2 v1.0.7) — Migration nötig
+3. **`--session new` an `add`** (§0.1, §5.3 v1.0.6) — Fehlendes Feature
+4. **`INVALID_TIME_ORDER` fehlt** (§3.3, §8) — `stop --at <past>` prüft nicht `finished_at < started_at`
+5. **`engine.default_formula` Config-Key fehlt** (§7.2 v1.0.6)
 
-### 🟠 P1 — Wichtig (10)
+### 🟠 P1 — Wichtig (8)
 
-13. **`preferred_formula` Validation wirft String-Error** (§8) — Kein `LiverError`, fällt zu `UNKNOWN_ERROR`
+6. **`preset save` → `preset set`** (§0.1 v1.0.6) — Naming-Drift
+7. **`--stomach` an `add` und `start`** (§0.1) — Fehlendes Flag
+8. **`--at` und `--duration` an `start`** (§0.1) — Fehlendes Flag
+9. **`liver session rename <id> --name <str>`** (§0.1) — Fehlender Command
+10. **`INVALID_DURATION` als String-Error** (§3.3) — Fällt durch zu `UNKNOWN_ERROR` (Exit 3 statt 1)
+11. **`BAD_TIME_FORMAT` als String-Error** (§3.3) — Fällt durch zu `UNKNOWN_ERROR` (Exit 3 statt 1)
+12. **`preferred_formula` Validation wirft String-Error** (§8) — Kein `LiverError`, fällt zu `UNKNOWN_ERROR`
+13. **`stomach` Default bei `session start`** (§0.3) — Hardcoded `'some'` statt letzter bekannter State
+
+### 🟡 P2 — Trivial (7)
+
 14. **`--human` Zeit-Format nicht spezifisch** (§2.5) — Generische Formatierung statt `HH:MM`
-15. **`stomach` Default bei `session start`** (§0.3) — Hardcoded `'some'` statt letzter bekannter State
-16. **`listSessions` nutzt LIKE auf ISO-String** (§9.1) — Funktioniert nur für UTC-Präfixe; Berlin-Mitternacht-Grenzen nicht berücksichtigt
-17. **Golden-Fixture-Tests ohne committed Fixtures** (§13.2) — Prüfen Werte > 0, aber kein Diff gegen Files
-18. **`curve` Punktezahl-Formel** (§10.3) — `Math.ceil(totalMinutes / stepMinutes) + 1` sollte `floor((to-from)/step)+1` sein
-19. **Config als Datei statt DB-Tabelle** (§7.2) — Spec zeigt `config` als DB-Tabelle, Implementation nutzt `~/.liver/config`
-20. **`db info` Command** — Fehlend, aber nützlich für Debugging
-21. **Preset-Mutator Output** (§0.4) — `preset rm` gibt `{ok, name}`; Spec erwähnt `{ok, <entity>_id}` — konsistent?
-22. **`auto_close` läuft bei jedem Command** (§11.1) — Auch bei `profile show`? Spec sagt "State berührt"
-
-### 🟡 P2 — Trivial (5)
-
-23. **`listSessions` LIKE-Pattern** — Funktioniert für UTC, aber nicht für Berlin-Zeit
-24. **`curve` Offset-Berechnung** — `offsetMinutes` in `getBACAt` nutzt `minutesBetween(at, nowUTC())` — könnte sign-Problem haben
-25. **`formatISOLocal`** — Nutzt System-TZ statt hardcoded `Europe/Berlin` (§4.2)
-26. **README fehlt Doku-Hinweis zu DST** (§4.5)
-27. **Version in `package.json`** = `0.1.0`, Spec erwähnt v1.0.x
+15. **`listSessions` nutzt LIKE auf ISO-String** (§9.1) — Funktioniert nur für UTC-Präfixe; Berlin-Mitternacht-Grenzen nicht berücksichtigt
+16. **Golden-Fixture-Tests ohne committed Fixtures** (§13.2) — Prüfen Werte > 0, aber kein Diff gegen Files
+17. **`curve` Punktezahl-Formel** (§10.3) — `Math.ceil(totalMinutes / stepMinutes) + 1` sollte `floor((to-from)/step)+1` sein
+18. **`auto_close` läuft bei jedem Command** (§11.1) — Auch bei `profile show`? Spec sagt "State berührt"
+19. **`formatISOLocal`** — Nutzt System-TZ statt hardcoded `Europe/Berlin` (§4.2)
+20. **Preset-Mutator Output** (§0.4) — `preset rm` gibt `{ok, name}`; Spec erwähnt `{ok, <entity>_id}` — konsistent?
 
 ---
 
-## Empfohlene Fix-Reihenfolge
+## Smoke-Test-Pass-1 Findings
 
-1. **Error-Codes als `LiverError` werfen** (`INVALID_DURATION`, `BAD_TIME_FORMAT`, `INVALID_TIME_ORDER`)
-2. **`preset save` → `preset set` umbenennen**
-3. **Fehlende Flags hinzufügen** (`--stomach`, `--at`, `--duration` an `start`; `--session new` an `add`)
-4. **Fehlende Commands hinzufügen** (`session rename`, `db info`)
-5. **Engine-Formel-Unterscheidung implementieren** (Watson vs Widmark im Stub)
-6. **Config-Key `engine.default_formula` hinzufügen**
-7. **`INVALID_TIME_ORDER` bei `stop --at <past>` prüfen**
-8. **`export`/`import` Klärung** — Implementieren oder in §14 bestätigen
-9. **Golden-Fixtures committed machen**
-10. **`stomach` Default aus letztem State lesen**
+| Finding | Severity | §-Bezug | Fix-Commit-Plan |
+|---|---|---|---|
+| S0.1: `--help` listet `export`/`import`/`db` (entfernt in v1.0.7) | P1 | §0.1, §14 | Commit 13 (polish): Help-Output bereinigen |
+| S1.1: `status` ohne Profile → Exit 2 statt 1 (Smoke-Test erwartet Exit 2) | P2 | §3.2 | Smoke-Test ist korrekt; Spec sagt Exit 1 für `PROFILE_MISSING` — **Spec-Update nötig** oder Test anpassen |
+| S2.1: `abv` als Fraktion (0.05) statt Prozent (5) im Output | P1 | §0.4 | Output-Schema-Anpassung in `add`/`start` |
+| S2.1: `drink_id` als UUID statt Integer | P1 | §0.4 | Schema-Anpassung (DB hat INTEGER PK) |
+| S3.4: `curve` Punktezahl ~49 statt erwartet | P1 | §10.2 | Formel-Anpassung: `floor((to-from)/step)+1` |
+| S6.1: `config` mit File-Layer statt SQLite | P0 | §7.2 | Commit 11: Config-Migration |
+| S6.2: Watson = Widmark (Stub-Problem) | P0 | §1.1 | Commit 1: Echtes WASM |
+| S6.3: Sex-Differenzierung kollabiert (Stub) | P0 | §1.1 | Commit 1: Echtes WASM |
+| S7.1: String-Errors → `UNKNOWN_ERROR` | P1 | §3.3 | Commit 2: `LiverError` statt String |
+| S8.1: Auto-Close Threshold-Berechnung | P1 | §11.2 | Prüfen ob `ended_at` = Sober-Zeitpunkt korrekt berechnet |
+
+---
+
+## Fix-Reihenfolge (nach Blast-Radius)
+
+1. **Commit 1:** `fix(§1.1): replace engine stub with real ethanol-rs WASM`
+2. **Commit 2:** `fix(§3.3): throw LiverError instead of string literals`
+3. **Commit 3:** `fix(§0.1): rename preset save → preset set`
+4. **Commit 4:** `feat(§0.1): add --stomach to add and start`
+5. **Commit 5:** `feat(§0.1): add --at and --duration to start`
+6. **Commit 6:** `feat(§0.1, §5.3): add --session new with retroactive backfill`
+7. **Commit 7:** `feat(§0.1): liver session rename <id> --name <str>`
+8. **Commit 8:** `feat(§7.2): engine.default_formula config key`
+9. **Commit 9:** `fix(§8, §3.3): INVALID_TIME_ORDER on stop --at <past>`
+10. **Commit 10:** `fix(§0.3): stomach default from last event, not hardcoded 'some'`
+11. **Commit 11:** `fix(§7.2, §1.2): move config from file to SQLite config table`
+12. **Commit 12:** `test(§13.2): committed golden fixtures`
+13. **Commit 13:** `fix(§2.5, §10.2, §9.1, §4.2, §11.1): polish`
