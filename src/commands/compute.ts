@@ -222,7 +222,7 @@ export function getCurve(
   const stepMinutes = options.step ?? 5;
 
   const totalMinutes = (to.getTime() - from.getTime()) / 60000;
-  const points = Math.ceil(totalMinutes / stepMinutes) + 1;
+  const points = Math.floor(totalMinutes / stepMinutes) + 1;
 
   if (points > 1000) {
     const suggestedStep = Math.ceil(totalMinutes / 1000);

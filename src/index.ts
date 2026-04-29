@@ -39,14 +39,17 @@ function getFormula(cmd: Command): BACFormula | undefined {
   return opts.formula;
 }
 
-function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command): void {
+function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command, touchesState = true): void {
   try {
     configureOutput(getOutputOptions(cmd));
 
     const db = initDb();
     logVerbose('Database initialized');
 
-    const closedSession = performAutoClose(db);
+    let closedSession: number | null = null;
+    if (touchesState) {
+      closedSession = performAutoClose(db);
+    }
 
     const result = fn();
 
@@ -111,7 +114,7 @@ profileCmd
         throw PROFILE_MISSING('profile show');
       }
       return profile;
-    }, cmd);
+    }, cmd, false);
   });
 
 // Preset Commands
@@ -140,7 +143,7 @@ presetCmd
       const result = listPresets(db);
       db.close();
       return result;
-    }, cmd);
+    }, cmd, false);
   });
 
 presetCmd
@@ -152,7 +155,7 @@ presetCmd
       const result = getPreset(db, name);
       db.close();
       return result;
-    }, cmd);
+    }, cmd, false);
   });
 
 presetCmd
@@ -224,7 +227,7 @@ sessionCmd
         throw SESSION_NOT_ACTIVE();
       }
       return session;
-    }, cmd);
+    }, cmd, false);
   });
 
 sessionCmd
@@ -238,7 +241,7 @@ sessionCmd
       const result = listSessions(db, { year: options.year, month: options.month });
       db.close();
       return result;
-    }, cmd);
+    }, cmd, false);
   });
 
 sessionCmd
@@ -392,7 +395,7 @@ drinkCmd
       const result = listDrinks(db);
       db.close();
       return result;
-    }, cmd);
+    }, cmd, false);
   });
 
 drinkCmd
@@ -514,7 +517,7 @@ configCmd
     handleCommand(() => {
       const value = getConfig(key);
       return { key, value };
-    }, cmd);
+    }, cmd, false);
   });
 
 configCmd
@@ -524,7 +527,7 @@ configCmd
     handleCommand(() => {
       const config = listConfig();
       return config;
-    }, cmd);
+    }, cmd, false);
   });
 
 program.parse();

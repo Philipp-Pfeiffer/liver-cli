@@ -145,11 +145,26 @@ export function listSessions(
   const params: unknown[] = [];
   
   if (options.month) {
-    sql += ' AND started_at LIKE ?';
-    params.push(`${options.month}%`);
+    // Parse YYYY-MM and compute UTC range for Berlin timezone
+    const [year, month] = options.month.split('-').map(Number);
+    const berlinStart = new Date(Date.UTC(year!, month! - 1, 1, 0, 0, 0));
+    const berlinEnd = new Date(Date.UTC(year!, month!, 1, 0, 0, 0));
+    // Berlin is UTC+1 or UTC+2, so we need to adjust
+    // For simplicity, we use a wider range and filter precisely in JS
+    sql += ' AND started_at >= ? AND started_at < ?';
+    params.push(
+      new Date(berlinStart.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+      new Date(berlinEnd.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+    );
   } else if (options.year) {
-    sql += ' AND started_at LIKE ?';
-    params.push(`${options.year}%`);
+    const year = parseInt(options.year, 10);
+    const berlinStart = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+    const berlinEnd = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0));
+    sql += ' AND started_at >= ? AND started_at < ?';
+    params.push(
+      new Date(berlinStart.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+      new Date(berlinEnd.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+    );
   }
   
   sql += ' ORDER BY started_at DESC';

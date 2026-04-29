@@ -31,7 +31,11 @@ export function formatISOUTC(date: Date): string {
 }
 
 export function formatISOLocal(date: Date): string {
-  const tzOffset = -date.getTimezoneOffset();
+  // Format to Berlin timezone with ISO offset
+  const berlinDate = new Date(date.toLocaleString('en-US', { timeZone: TIMEZONE }));
+  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const diffMs = berlinDate.getTime() - utcDate.getTime();
+  const tzOffset = -diffMs / 60000;
   const absOffset = Math.abs(tzOffset);
   const hours = Math.floor(absOffset / 60).toString().padStart(2, '0');
   const minutes = (absOffset % 60).toString().padStart(2, '0');
