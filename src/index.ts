@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { initDb } from './db/index.js';
 import { setProfile, getProfile } from './commands/profile.js';
 import { setPreset, listPresets, getPreset, removePreset } from './commands/preset.js';
-import { startSession, endSession, listSessions, getSession, setStomachState, getActiveSession } from './commands/session.js';
+import { startSession, endSession, listSessions, getSession, setStomachState, getActiveSession, renameSession } from './commands/session.js';
 import { addDrink, startDrink, stopDrink, listDrinks, removeDrink } from './commands/drink.js';
 import { getStatus, getBACAt, getSober, getCurve } from './commands/compute.js';
 import { getStats } from './commands/stats.js';
@@ -255,6 +255,19 @@ sessionCmd
     }, cmd);
   });
 
+sessionCmd
+  .command('rename <id>')
+  .description('Rename a session')
+  .requiredOption('--name <str>', 'New name')
+  .action((id, options, cmd) => {
+    handleCommand(() => {
+      const db = initDb();
+      const result = renameSession(db, parseInt(id, 10), options.name);
+      db.close();
+      return result;
+    }, cmd);
+  });
+
 // Drink Commands
 program
   .command('add [preset]')
@@ -263,6 +276,9 @@ program
   .option('--abv <pct>', 'ABV in percent', parseFloat)
   .option('--at <T>', 'Time')
   .option('--duration <Xm|Xh>', 'Duration')
+  .option('--stomach <empty|some|full>', 'Stomach state')
+  .option('--session <new>', 'Create new session for backdated drink')
+  .option('--name <str>', 'Session name (with --session new)')
   .action((preset, options, cmd) => {
     handleCommand(() => {
       const db = initDb();
@@ -294,6 +310,9 @@ program
         at,
         duration: options.duration,
         presetName,
+        stomach: options.stomach,
+        sessionNew: options.session === 'new',
+        sessionName: options.name,
       });
       db.close();
       return result;
@@ -305,6 +324,9 @@ program
   .description('Start drinking')
   .option('--vol <ml>', 'Volume in ml', parseFloat)
   .option('--abv <pct>', 'ABV in percent', parseFloat)
+  .option('--at <T>', 'Start time')
+  .option('--duration <Xm|Xh>', 'Duration')
+  .option('--stomach <empty|some|full>', 'Stomach state')
   .option('--force', 'Force start (stop current drink)')
   .action((preset, options, cmd) => {
     handleCommand(() => {
@@ -330,11 +352,15 @@ program
         throw INVALID_VOLUME();
       }
       
+      const at = options.at ? parseTimestamp(options.at) : undefined;
       const result = startDrink(db, {
         volumeMl,
         abv,
         presetName,
         force: options.force,
+        at,
+        duration: options.duration,
+        stomach: options.stomach,
       });
       db.close();
       return result;

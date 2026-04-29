@@ -1,10 +1,11 @@
 import type Database from 'better-sqlite3';
-import { validateVolume, validateABV, validateDuration } from '../errors/validation.js';
+import { validateVolume, validateABV, validateDuration, validateStomachState } from '../errors/validation.js';
 import {
   DRINK_ALREADY_RUNNING,
   NO_DRINK_TO_STOP,
   TIMESTAMP_OUTSIDE_SESSION,
   DRINK_NOT_FOUND,
+  INVALID_TIME_ORDER,
 } from '../errors/index.js';
 import { formatISOUTC, nowUTC, parseDuration } from '../time/index.js';
 import { requireActiveSession, resolveStomachStateAt } from './session.js';
@@ -52,6 +53,9 @@ export function addDrink(
     at?: Date;
     duration?: string;
     presetName?: string;
+    stomach?: string;
+    sessionNew?: boolean;
+    sessionName?: string;
   },
 ): { drink_id: number; session_id: number; started_at: string; finished_at: string; volume_ml: number; abv: number; preset_name: string | null; stomach_state: string; bac_after_promille: number } {
   validateVolume(options.volumeMl);
@@ -61,12 +65,40 @@ export function addDrink(
   const durationMinutes = options.duration ? parseDuration(options.duration) : 0;
   validateDuration(durationMinutes);
   
-  const session = findSessionForTimestamp(db, at);
+  let session = findSessionForTimestamp(db, at);
   if (!session) {
-    throw TIMESTAMP_OUTSIDE_SESSION();
+    if (options.sessionNew) {
+      // Create retroactive session
+      const stomachState = options.stomach ?? 'some';
+      validateStomachState(stomachState);
+      
+      const sessionResult = db.prepare(
+        'INSERT INTO sessions (name, started_at, ended_at, stomach_initial) VALUES (?, ?, ?, ?)'
+      ).run(
+        options.sessionName ?? null,
+        formatISOUTC(at),
+        null,
+        stomachState,
+      );
+      
+      const sessionId = sessionResult.lastInsertRowid as number;
+      db.prepare(
+        'INSERT INTO stomach_events (session_id, at, state) VALUES (?, ?, ?)'
+      ).run(sessionId, formatISOUTC(at), stomachState);
+      
+      session = { id: sessionId };
+    } else {
+      throw TIMESTAMP_OUTSIDE_SESSION();
+    }
   }
   
-  const stomachState = resolveStomachStateAt(db, session.id, at);
+  let stomachState: string;
+  if (options.stomach) {
+    validateStomachState(options.stomach);
+    stomachState = options.stomach;
+  } else {
+    stomachState = resolveStomachStateAt(db, session.id, at);
+  }
   
   const finishedAt = new Date(at.getTime() + durationMinutes * 60000);
   
@@ -103,13 +135,18 @@ export function startDrink(
     abv: number;
     presetName?: string;
     force?: boolean;
+    at?: Date;
+    duration?: string;
+    stomach?: string;
   },
-): { drink_id: number; session_id: number; started_at: string; volume_ml: number; abv: number; preset_name: string | null; stomach_state: string; bac_after_promille: number } {
+): { drink_id: number; session_id: number; started_at: string; finished_at: string | null; volume_ml: number; abv: number; preset_name: string | null; stomach_state: string; bac_after_promille: number } {
   validateVolume(options.volumeMl);
   validateABV(options.abv);
   
   const session = requireActiveSession(db);
-  const at = nowUTC();
+  const at = options.at ?? nowUTC();
+  const durationMinutes = options.duration ? parseDuration(options.duration) : 0;
+  validateDuration(durationMinutes);
   
   const runningDrink = db.prepare(
     'SELECT * FROM drinks WHERE session_id = ? AND finished_at IS NULL'
@@ -119,7 +156,15 @@ export function startDrink(
     throw DRINK_ALREADY_RUNNING();
   }
   
-  const stomachState = resolveStomachStateAt(db, session.id, at);
+  let stomachState: string;
+  if (options.stomach) {
+    validateStomachState(options.stomach);
+    stomachState = options.stomach;
+  } else {
+    stomachState = resolveStomachStateAt(db, session.id, at);
+  }
+  
+  const finishedAt = durationMinutes > 0 ? new Date(at.getTime() + durationMinutes * 60000) : null;
   
   let result: Database.RunResult;
   
@@ -133,7 +178,7 @@ export function startDrink(
     ).run(
       session.id,
       formatISOUTC(at),
-      null,
+      finishedAt ? formatISOUTC(finishedAt) : null,
       options.volumeMl,
       options.abv,
       options.presetName ?? null,
@@ -169,11 +214,15 @@ export function stopDrink(
     throw NO_DRINK_TO_STOP();
   }
   
+  const startedAt = new Date(drink.started_at);
+  if (at < startedAt) {
+    throw INVALID_TIME_ORDER();
+  }
+  
   db.prepare(
     'UPDATE drinks SET finished_at = ? WHERE id = ?'
   ).run(formatISOUTC(at), drink.id);
   
-  const startedAt = new Date(drink.started_at);
   const durationSecs = (at.getTime() - startedAt.getTime()) / 1000;
   
   return {

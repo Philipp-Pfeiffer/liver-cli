@@ -50,7 +50,16 @@ export function startSession(
 ): { ok: true; session_id: number } {
   validateSessionName(options.name);
   
-  const stomachState = options.stomach ?? 'some';
+  let stomachState: string;
+  if (options.stomach) {
+    stomachState = options.stomach;
+  } else {
+    // Get last stomach state from most recent ended session
+    const lastSession = db.prepare(
+      `SELECT stomach_initial FROM sessions WHERE ended_at IS NOT NULL ORDER BY ended_at DESC LIMIT 1`
+    ).get() as { stomach_initial: string } | undefined;
+    stomachState = lastSession?.stomach_initial ?? 'some';
+  }
   validateStomachState(stomachState);
   
   const activeSession = getActiveSession(db);
@@ -109,6 +118,23 @@ export function endSession(
 
 export function getSession(db: Database.Database, id: number): SessionData | null {
   return db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as SessionData | null;
+}
+
+export function renameSession(
+  db: Database.Database,
+  id: number,
+  name: string,
+): { ok: true; session_id: number } {
+  validateSessionName(name);
+  
+  const session = getSession(db, id);
+  if (!session) {
+    throw SESSION_NOT_ACTIVE();
+  }
+  
+  db.prepare('UPDATE sessions SET name = ? WHERE id = ?').run(name, id);
+  
+  return { ok: true, session_id: id };
 }
 
 export function listSessions(
