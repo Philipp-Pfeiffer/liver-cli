@@ -69,7 +69,7 @@ describe('Command Surface Test', () => {
   it('polymorphic add works with preset', () => {
     runRaw(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
     runRaw(dbPath, 'session start --stomach full');
-    runRaw(dbPath, 'preset save beer --vol 500 --abv 5.0');
+    runRaw(dbPath, 'preset set beer --vol 500 --abv 5.0');
     const result = JSON.parse(runRaw(dbPath, 'add beer'));
     expect(result.drink_id).toBeGreaterThan(0);
     expect(result.volume_ml).toBe(500);
@@ -88,14 +88,14 @@ describe('Command Surface Test', () => {
   it('polymorphic add rejects ambiguous input', () => {
     runRaw(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
     runRaw(dbPath, 'session start --stomach full');
-    runRaw(dbPath, 'preset save beer --vol 500 --abv 5.0');
+    runRaw(dbPath, 'preset set beer --vol 500 --abv 5.0');
     expect(() => runRaw(dbPath, 'add beer --vol 500 --abv 5.0')).toThrow();
   });
 
   it('polymorphic start with --force stops running drink', () => {
     runRaw(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
     runRaw(dbPath, 'session start --stomach full');
-    runRaw(dbPath, 'preset save beer --vol 500 --abv 5.0');
+    runRaw(dbPath, 'preset set beer --vol 500 --abv 5.0');
     JSON.parse(runRaw(dbPath, 'start beer'));
     const result = JSON.parse(runRaw(dbPath, 'start beer --force'));
     expect(result.drink_id).toBeGreaterThan(0);

@@ -45,7 +45,7 @@ describe('CLI integration', () => {
 
   it('should save preset', () => {
     run(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
-    const result = run(dbPath, 'preset save augustiner --vol 500 --abv 5.2');
+    const result = run(dbPath, 'preset set augustiner --vol 500 --abv 5.2');
     expect(result.ok).toBe(true);
   });
 
@@ -58,7 +58,7 @@ describe('CLI integration', () => {
   it('should add drink', () => {
     run(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
     run(dbPath, 'session start --name Test --stomach full');
-    run(dbPath, 'preset save augustiner --vol 500 --abv 5.2');
+    run(dbPath, 'preset set augustiner --vol 500 --abv 5.2');
     const result = run(dbPath, 'add augustiner');
     expect(result.drink_id).toBeGreaterThan(0);
   });
@@ -66,7 +66,7 @@ describe('CLI integration', () => {
   it('should show status', () => {
     run(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
     run(dbPath, 'session start --name Test --stomach full');
-    run(dbPath, 'preset save augustiner --vol 500 --abv 5.2');
+    run(dbPath, 'preset set augustiner --vol 500 --abv 5.2');
     run(dbPath, 'add augustiner');
     const result = run(dbPath, 'status');
     expect(result.bac_promille).toBeGreaterThan(0);

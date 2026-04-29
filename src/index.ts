@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { initDb } from './db/index.js';
 import { setProfile, getProfile } from './commands/profile.js';
-import { savePreset, listPresets, getPreset, removePreset } from './commands/preset.js';
+import { setPreset, listPresets, getPreset, removePreset } from './commands/preset.js';
 import { startSession, endSession, listSessions, getSession, setStomachState, getActiveSession } from './commands/session.js';
 import { addDrink, startDrink, stopDrink, listDrinks, removeDrink } from './commands/drink.js';
 import { getStatus, getBACAt, getSober, getCurve } from './commands/compute.js';
@@ -118,14 +118,14 @@ profileCmd
 const presetCmd = program.command('preset');
 
 presetCmd
-  .command('save <name>')
-  .description('Save a drink preset')
+  .command('set <name>')
+  .description('Set a drink preset')
   .requiredOption('--vol <ml>', 'Volume in ml', parseFloat)
   .requiredOption('--abv <pct>', 'ABV in percent', parseFloat)
   .action((name, options, cmd) => {
     handleCommand(() => {
       const db = initDb();
-      const result = savePreset(db, name, options.vol, options.abv);
+      const result = setPreset(db, name, options.vol, options.abv);
       db.close();
       return result;
     }, cmd);
