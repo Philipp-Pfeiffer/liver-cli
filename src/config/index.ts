@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { CONFIG_FILE_CORRUPT, INVALID_CONFIG_KEY } from '../errors/index.js';
 
 const LIVER_DIR = join(homedir(), '.liver');
 const CONFIG_PATH = join(LIVER_DIR, 'config');
@@ -25,7 +26,7 @@ function loadConfig(): LiverConfig {
     const content = readFileSync(CONFIG_PATH, 'utf-8');
     return JSON.parse(content) as LiverConfig;
   } catch {
-    throw new Error('CONFIG_FILE_CORRUPT');
+    throw CONFIG_FILE_CORRUPT();
   }
 }
 
@@ -36,7 +37,7 @@ function saveConfig(config: LiverConfig): void {
 
 export function getConfig(key: string): unknown {
   if (!ALLOWED_KEYS.includes(key)) {
-    throw new Error('INVALID_CONFIG_KEY');
+    throw INVALID_CONFIG_KEY();
   }
   
   const config = loadConfig();
@@ -56,7 +57,7 @@ function parseConfigValue(value: unknown): unknown {
 
 export function setConfig(key: string, value: unknown): void {
   if (!ALLOWED_KEYS.includes(key)) {
-    throw new Error('INVALID_CONFIG_KEY');
+    throw INVALID_CONFIG_KEY();
   }
   
   const config = loadConfig();

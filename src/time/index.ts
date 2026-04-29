@@ -1,4 +1,5 @@
 import * as chrono from 'chrono-node';
+import { BAD_TIME_FORMAT, INVALID_DURATION } from '../errors/index.js';
 
 const TIMEZONE = 'Europe/Berlin';
 
@@ -6,7 +7,7 @@ export function parseTimestamp(input: string, referenceDate: Date = new Date()):
   const results = chrono.parse(input, referenceDate, { forwardDate: false });
   
   if (results.length === 0) {
-    throw new Error(`BAD_TIME_FORMAT`);
+    throw BAD_TIME_FORMAT();
   }
   
   const result = results[0];
@@ -65,7 +66,7 @@ export function parseDuration(input: string): number {
   const match = input.match(/^(\d+)(m|h)$/);
   if (!match) {
     if (input === '0') return 0;
-    throw new Error('INVALID_DURATION');
+    throw INVALID_DURATION();
   }
   
   const value = parseInt(match[1], 10);
@@ -79,7 +80,7 @@ export function parseDuration(input: string): number {
   }
   
   if (minutes < 0 || minutes > 24 * 60) {
-    throw new Error('INVALID_DURATION');
+    throw INVALID_DURATION();
   }
   
   return minutes;

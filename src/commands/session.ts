@@ -4,6 +4,7 @@ import {
   SESSION_ALREADY_ACTIVE,
   SESSION_NOT_ACTIVE,
   TIMESTAMP_OUTSIDE_SESSION,
+  ENGINE_PANIC,
 } from '../errors/index.js';
 import { formatISOUTC, nowUTC, parseTimestamp } from '../time/index.js';
 
@@ -85,7 +86,7 @@ export function startSession(
   
   const newSession = getActiveSession(db);
   if (!newSession) {
-    throw new Error('Failed to create session');
+    throw ENGINE_PANIC();
   }
   
   return { ok: true, session_id: newSession.id };

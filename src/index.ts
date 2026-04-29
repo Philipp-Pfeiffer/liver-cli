@@ -10,7 +10,7 @@ import { getConfig, setConfig, listConfig } from './config/index.js';
 import { performAutoClose } from './commands/auto-close.js';
 import { configureOutput, outputSuccess, outputError, logVerbose } from './output/index.js';
 import { parseTimestamp } from './time/index.js';
-import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, CURVE_TOO_LARGE, INVALID_CONFIG_KEY, CONFIG_FILE_CORRUPT, INVALID_VOLUME, INVALID_ABV } from './errors/index.js';
+import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, INVALID_VOLUME, INVALID_ABV } from './errors/index.js';
 import type { OutputOptions } from './output/index.js';
 import type { BACFormula } from './engine/types.js';
 
@@ -68,31 +68,6 @@ function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command): 
     }
 
     const message = error instanceof Error ? error.message : String(error);
-
-    if (message.startsWith('CURVE_TOO_LARGE:')) {
-      const suggestedStep = parseInt(message.split(':')[1]!, 10);
-      const err = CURVE_TOO_LARGE(suggestedStep);
-      outputError(err, getOutputOptions(cmd));
-      process.exit(err.exitCode);
-    }
-
-    if (message === 'SESSION_NOT_ACTIVE') {
-      const err = SESSION_NOT_ACTIVE();
-      outputError(err, getOutputOptions(cmd));
-      process.exit(err.exitCode);
-    }
-
-    if (message === 'INVALID_CONFIG_KEY') {
-      const err = INVALID_CONFIG_KEY();
-      outputError(err, getOutputOptions(cmd));
-      process.exit(err.exitCode);
-    }
-
-    if (message === 'CONFIG_FILE_CORRUPT') {
-      const err = CONFIG_FILE_CORRUPT();
-      outputError(err, getOutputOptions(cmd));
-      process.exit(err.exitCode);
-    }
 
     console.error(JSON.stringify({
       error: {

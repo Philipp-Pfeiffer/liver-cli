@@ -6,7 +6,7 @@ import {
   validateSex,
 } from '../errors/validation.js';
 import { formatISOUTC } from '../time/index.js';
-import { PROFILE_MISSING } from '../errors/index.js';
+import { PROFILE_MISSING, INVALID_CONFIG_KEY } from '../errors/index.js';
 
 export interface ProfileData {
   weight_kg: number;
@@ -30,7 +30,7 @@ export function setProfile(
   validateSex(sex);
   
   if (formula && !['watson', 'widmark'].includes(formula)) {
-    throw new Error('INVALID_CONFIG_KEY');
+    throw INVALID_CONFIG_KEY();
   }
   
   db.prepare('DELETE FROM profile').run();
