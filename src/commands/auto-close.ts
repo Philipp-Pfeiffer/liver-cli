@@ -28,7 +28,8 @@ export function performAutoClose(db: Database.Database, referenceTime?: Date): n
     return null;
   }
 
-  // SKIP auto-close if the last drink is very old (>24h).
+  // Auto-close window: only close sessions with last drink in the past 24h.
+  // See Spec v1.0.8 §X.
   // Prevents performAutoClose from killing historical test sessions
   // when the system clock differs from the session time.
   const hoursSinceLastDrink = (ref.getTime() - lastFinishedAt.getTime()) / (1000 * 60 * 60);

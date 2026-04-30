@@ -76,6 +76,18 @@ function berlinTimeToUTC(year: number, month: number, day: number, hour = 0, min
   return new Date(utcMs);
 }
 
+function isBerlinMidnight(date: Date): boolean {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Berlin',
+    hour: 'numeric', minute: 'numeric', second: 'numeric',
+    hour12: false,
+  }).formatToParts(date);
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+  const second = parseInt(parts.find(p => p.type === 'second')?.value ?? '0', 10);
+  return hour === 0 && minute === 0 && second === 0;
+}
+
 function formatBerlinDate(date: Date): string {
   const parts = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Europe/Berlin',
@@ -193,6 +205,10 @@ export function getStats(
   } else if (options.from && options.to) {
     from = options.from;
     to = options.to;
+    // If 'to' is at Berlin midnight, treat it as end-of-day inclusive
+    if (isBerlinMidnight(to)) {
+      to = new Date(to.getTime() + 24 * 60 * 60 * 1000);
+    }
     mode = 'range';
   } else {
     from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

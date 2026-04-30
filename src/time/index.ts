@@ -3,12 +3,47 @@ import { BAD_TIME_FORMAT, INVALID_DURATION } from '../errors/index.js';
 
 const TIMEZONE = 'Europe/Berlin';
 
+function getBerlinOffsetMs(utcDate: Date): number {
+  const berlinParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIMEZONE,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric',
+    hour12: false,
+  }).formatToParts(utcDate);
+
+  const getPart = (type: string) => parseInt(berlinParts.find(p => p.type === type)?.value ?? '0', 10);
+  const bYear = getPart('year');
+  const bMonth = getPart('month');
+  const bDay = getPart('day');
+  const bHour = getPart('hour');
+  const bMinute = getPart('minute');
+  const bSecond = getPart('second');
+
+  const berlinTime = Date.UTC(bYear, bMonth - 1, bDay, bHour, bMinute, bSecond);
+  return utcDate.getTime() - berlinTime;
+}
+
+function berlinMidnightToUTC(year: number, month: number, day: number): Date {
+  const targetMs = Date.UTC(year, month - 1, day, 0, 0, 0);
+  let utcMs = targetMs;
+  for (let i = 0; i < 3; i++) {
+    const offset = getBerlinOffsetMs(new Date(utcMs));
+    const newUtcMs = targetMs + offset;
+    if (Math.abs(newUtcMs - utcMs) < 1000) {
+      utcMs = newUtcMs;
+      break;
+    }
+    utcMs = newUtcMs;
+  }
+  return new Date(utcMs);
+}
+
 export function parseTimestamp(input: string, referenceDate: Date = new Date()): Date {
-  // Fast-path for bare ISO dates (YYYY-MM-DD) → treat as UTC midnight
+  // Fast-path for bare ISO dates (YYYY-MM-DD) → treat as Berlin midnight
   const isoDateMatch = input.match(/^\d{4}-\d{2}-\d{2}$/);
   if (isoDateMatch) {
     const [year, month, day] = input.split('-').map(Number);
-    return new Date(Date.UTC(year!, month! - 1, day!, 0, 0, 0, 0));
+    return berlinMidnightToUTC(year!, month!, day!);
   }
 
   const results = chrono.parse(input, referenceDate, { forwardDate: false });

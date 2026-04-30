@@ -73,7 +73,32 @@ function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command, t
     // Map SQLite errors to LiverError codes
     if (error instanceof Database.SqliteError) {
       if (error.code === 'SQLITE_BUSY') {
+      if (error.code === 'SQLITE_NOTADB') {
+        const dbError = DATABASE_CORRUPTED();
+        outputError(dbError, getOutputOptions(cmd));
+        process.exit(dbError.exitCode);
+      }
         const dbError = DB_LOCKED();
+      if (error.code === 'SQLITE_NOTADB') {
+        const dbError = DATABASE_CORRUPTED();
+        outputError(dbError, getOutputOptions(cmd));
+        process.exit(dbError.exitCode);
+      }
+        outputError(dbError, getOutputOptions(cmd));
+      if (error.code === 'SQLITE_NOTADB') {
+        const dbError = DATABASE_CORRUPTED();
+        outputError(dbError, getOutputOptions(cmd));
+        process.exit(dbError.exitCode);
+      }
+        process.exit(dbError.exitCode);
+      if (error.code === 'SQLITE_NOTADB') {
+        const dbError = DATABASE_CORRUPTED();
+        outputError(dbError, getOutputOptions(cmd));
+        process.exit(dbError.exitCode);
+      }
+      }
+      if (error.code === 'SQLITE_NOTADB') {
+        const dbError = DATABASE_CORRUPTED();
         outputError(dbError, getOutputOptions(cmd));
         process.exit(dbError.exitCode);
       }

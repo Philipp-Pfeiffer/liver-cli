@@ -142,3 +142,5 @@ export const CONFIG_FILE_CORRUPT = () =>
 
 export const INVALID_CONFIG_KEY = () =>
   new LiverError('INVALID_CONFIG_KEY', 'Invalid config key.', EXIT_CODES.CONFIG_ERROR);
+export const DATABASE_CORRUPTED = () =>
+  new LiverError('DATABASE_CORRUPTED', 'Database file is corrupt. Remove ~/.liver/db.sqlite and retry.', EXIT_CODES.INTERNAL_ERROR);
