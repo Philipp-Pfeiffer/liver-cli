@@ -21,7 +21,7 @@ Commands:
   status                    Current BAC status
   bac [options]             BAC at specific time
   curve [options]           BAC curve
-  sober                     Time until sober
+  sober [options]           Time until sober
   stats [options]           Drinking statistics
   config
   help [command]            display help for command
