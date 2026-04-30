@@ -52,10 +52,14 @@ describe('computation commands', () => {
     expect(() => getStatus(db2)).toThrow();
   });
 
-  it('should require active session', () => {
+  it('should return no-session status when no active session', () => {
     const db2 = new Database(':memory:');
     migrate(db2);
     setProfile(db2, 78, 184, 'm', 22);
-    expect(() => getStatus(db2)).toThrow();
+    const status = getStatus(db2);
+    expect(status.session_id).toBeNull();
+    expect(status.bac_promille).toBe(0);
+    expect(status.warnings).toContain('no_active_session');
+    expect(status.disclaimer).toBeDefined();
   });
 });
