@@ -4,6 +4,13 @@ import { BAD_TIME_FORMAT, INVALID_DURATION } from '../errors/index.js';
 const TIMEZONE = 'Europe/Berlin';
 
 export function parseTimestamp(input: string, referenceDate: Date = new Date()): Date {
+  // Fast-path for bare ISO dates (YYYY-MM-DD) → treat as UTC midnight
+  const isoDateMatch = input.match(/^\d{4}-\d{2}-\d{2}$/);
+  if (isoDateMatch) {
+    const [year, month, day] = input.split('-').map(Number);
+    return new Date(Date.UTC(year!, month! - 1, day!, 0, 0, 0, 0));
+  }
+
   const results = chrono.parse(input, referenceDate, { forwardDate: false });
   
   if (results.length === 0) {
