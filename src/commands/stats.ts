@@ -247,8 +247,8 @@ export function getStats(
     }
 
     const lastDrinkingDay = new Date(allDrinkingDays[allDrinkingDays.length - 1]!);
-    const today = new Date();
-    const daysSinceLastDrink = Math.floor((today.getTime() - lastDrinkingDay.getTime()) / (24 * 60 * 60 * 1000));
+    const referenceDate = to ?? new Date();
+    const daysSinceLastDrink = Math.floor((referenceDate.getTime() - lastDrinkingDay.getTime()) / (24 * 60 * 60 * 1000));
     currentDryStreak = daysSinceLastDrink;
   }
 

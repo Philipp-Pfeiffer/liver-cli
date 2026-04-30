@@ -28,6 +28,7 @@ export interface DrinkData {
 function computeBACAfter(
   db: Database.Database,
   sessionId: number,
+  referenceTime?: Date,
 ): number {
   const profile = requireProfile(db, 'add');
   const formula = (profile.preferred_formula ?? 'watson') as BACFormula;
@@ -37,8 +38,8 @@ function computeBACAfter(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(sessionId) as DrinkData[];
   
-  const now = nowUTC();
-  const engineDrinks = drinksToEngine(db, drinks, now);
+  const ref = referenceTime ?? nowUTC();
+  const engineDrinks = drinksToEngine(db, drinks, ref);
   const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
   const bacPromille = bacPercent * 10;
   
@@ -68,6 +69,18 @@ export function addDrink(
   let session = findSessionForTimestamp(db, at);
   if (!session) {
     if (options.sessionNew) {
+      // Close any active sessions before creating a new one
+      const activeSession = db.prepare(
+        'SELECT id FROM sessions WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1'
+      ).get() as { id: number } | undefined;
+      
+      if (activeSession) {
+        db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(
+          formatISOUTC(at),
+          activeSession.id,
+        );
+      }
+      
       // Create retroactive session
       const stomachState = options.stomach ?? 'some';
       validateStomachState(stomachState);
@@ -113,7 +126,7 @@ export function addDrink(
     options.presetName ?? null,
   );
   
-  const bacAfter = computeBACAfter(db, session.id);
+  const bacAfter = computeBACAfter(db, session.id, at);
   
   return {
     drink_id: result.lastInsertRowid as number,
@@ -185,7 +198,7 @@ export function startDrink(
     );
   })();
   
-  const bacAfter = computeBACAfter(db, session.id);
+  const bacAfter = computeBACAfter(db, session.id, at);
 
   return {
     drink_id: result!.lastInsertRowid as number,

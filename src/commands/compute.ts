@@ -4,8 +4,8 @@ import { calculateBACAtOffset, getMinutesUntilSober, getCurve, resolveFormula } 
 import { requireProfile } from './profile.js';
 import { requireActiveSession, getActiveSession, resolveStomachStateAt } from './session.js';
 import { getSweetSpotDefaults } from '../config/index.js';
-import { formatISOUTC, formatISOLocal, nowUTC, minutesBetween } from '../time/index.js';
-import { CURVE_TOO_LARGE, SESSION_NOT_ACTIVE } from '../errors/index.js';
+import { formatISOUTC, formatISOLocal, nowUTC } from '../time/index.js';
+import { CURVE_TOO_LARGE } from '../errors/index.js';
 import type { DrinkData } from './drink.js';
 
 function profileToEngine(profile: { weight_kg: number; height_cm: number; sex: string; age: number }): ProfileParams {
@@ -47,13 +47,20 @@ function getZone(bacPromille: number, sweetMin: number, sweetMax: number): strin
 
 export function getStatus(
   db: Database.Database,
-  options: { formula?: BACFormula } = {},
+  options: { formula?: BACFormula; at?: Date } = {},
 ): Record<string, unknown> {
   const profile = requireProfile(db, 'status');
   const session = getActiveSession(db);
 
   if (!session) {
-    throw SESSION_NOT_ACTIVE();
+    return {
+      session_id: null,
+      session_name: null,
+      bac_promille: 0,
+      minutes_until_sober: 0,
+      warnings: ['no_active_session'],
+      disclaimer: 'estimate, not legally/medically valid',
+    };
   }
 
   const formula = resolveFormula(
@@ -67,7 +74,7 @@ export function getStatus(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
-  const now = nowUTC();
+  const now = options.at ?? nowUTC();
   const engineDrinks = drinksToEngine(db, drinks, now);
 
   const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
@@ -130,8 +137,7 @@ export function getBACAt(
   ).all(session.id) as DrinkData[];
 
   const engineDrinks = drinksToEngine(db, drinks, at);
-  const offsetMinutes = -minutesBetween(at, nowUTC());
-  const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, offsetMinutes);
+  const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
   const bacPromille = bacPercent * 10;
 
   const sweetSpot = getSweetSpotDefaults();
@@ -149,7 +155,7 @@ export function getBACAt(
 
 export function getSober(
   db: Database.Database,
-  options: { formula?: BACFormula } = {},
+  options: { formula?: BACFormula; at?: Date } = {},
 ): Record<string, unknown> {
   const profile = requireProfile(db, 'sober');
   const session = getActiveSession(db);
@@ -169,11 +175,11 @@ export function getSober(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
-  const now = nowUTC();
-  const engineDrinks = drinksToEngine(db, drinks, now);
+  const at = options.at ?? nowUTC();
+  const engineDrinks = drinksToEngine(db, drinks, at);
 
   const minutesUntil = getMinutesUntilSober(engineProfile, engineDrinks, formula);
-  const soberAt = new Date(now.getTime() + minutesUntil * 60000);
+  const soberAt = new Date(at.getTime() + minutesUntil * 60000);
 
   return {
     minutes_until_sober: minutesUntil,
@@ -261,6 +267,7 @@ export function getCurve(
       points: curvePoints.length,
       formula,
     },
+    disclaimer: 'estimate, not legally/medically valid',
   };
 }
 

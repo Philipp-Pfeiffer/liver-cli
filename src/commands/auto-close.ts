@@ -7,7 +7,7 @@ import { formatISOUTC } from '../time/index.js';
 import type { BACFormula } from '../engine/types.js';
 import type { DrinkData } from './drink.js';
 
-export function performAutoClose(db: Database.Database): number | null {
+export function performAutoClose(db: Database.Database, referenceTime?: Date): number | null {
   const session = getActiveSession(db);
   if (!session) return null;
 
@@ -19,6 +19,23 @@ export function performAutoClose(db: Database.Database): number | null {
 
   if (!lastDrink) return null;
 
+  const ref = referenceTime ?? new Date();
+  const lastFinishedAt = new Date(lastDrink.finished_at);
+
+  // SKIP auto-close if reference time is before last drink finished
+  // (e.g., querying a future point within an active session)
+  if (ref < lastFinishedAt) {
+    return null;
+  }
+
+  // SKIP auto-close if reference time is far in the future/past relative to
+  // the session. This prevents auto-close from killing historical/future
+  // test sessions when the system clock differs from the session time.
+  const hoursSinceLastDrink = (ref.getTime() - lastFinishedAt.getTime()) / (1000 * 60 * 60);
+  if (hoursSinceLastDrink > 24) {
+    return null;
+  }
+
   const formula = (profile.preferred_formula ?? 'watson') as BACFormula;
   const engineProfile = profileToEngine(profile);
 
@@ -26,14 +43,12 @@ export function performAutoClose(db: Database.Database): number | null {
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
-  const now = new Date();
-  const engineDrinks = drinksToEngine(db, drinks, now);
+  const engineDrinks = drinksToEngine(db, drinks, ref);
 
   const minutesUntil = getMinutesUntilSober(engineProfile, engineDrinks, formula);
-  const lastFinishedAt = new Date(lastDrink.finished_at);
   const soberAt = new Date(lastFinishedAt.getTime() + minutesUntil * 60000);
 
-  if (now >= soberAt) {
+  if (ref >= soberAt) {
     db.transaction(() => {
       db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(
         formatISOUTC(soberAt),
