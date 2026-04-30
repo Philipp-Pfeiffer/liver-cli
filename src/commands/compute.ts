@@ -5,6 +5,7 @@ import { requireProfile } from './profile.js';
 import { requireActiveSession, getActiveSession, resolveStomachStateAt } from './session.js';
 import { getSweetSpotDefaults } from '../config/index.js';
 import { formatISOUTC, formatISOLocal, nowUTC, minutesBetween } from '../time/index.js';
+import { CURVE_TOO_LARGE, SESSION_NOT_ACTIVE } from '../errors/index.js';
 import type { DrinkData } from './drink.js';
 
 function profileToEngine(profile: { weight_kg: number; height_cm: number; sex: string; age: number }): ProfileParams {
@@ -52,7 +53,7 @@ export function getStatus(
   const session = getActiveSession(db);
 
   if (!session) {
-    throw new Error('SESSION_NOT_ACTIVE');
+    throw SESSION_NOT_ACTIVE();
   }
 
   const formula = resolveFormula(
@@ -119,7 +120,7 @@ export function getBACAt(
   ).get(formatISOUTC(at), formatISOUTC(at)) as { id: number } | undefined;
 
   if (!session) {
-    throw new Error('SESSION_NOT_ACTIVE');
+    throw SESSION_NOT_ACTIVE();
   }
 
   const engineProfile = profileToEngine(profile);
@@ -154,7 +155,7 @@ export function getSober(
   const session = getActiveSession(db);
 
   if (!session) {
-    throw new Error('SESSION_NOT_ACTIVE');
+    throw SESSION_NOT_ACTIVE();
   }
 
   const formula = resolveFormula(
@@ -194,7 +195,7 @@ export function getCurve(
   const session = getActiveSession(db);
 
   if (!session) {
-    throw new Error('SESSION_NOT_ACTIVE');
+    throw SESSION_NOT_ACTIVE();
   }
 
   const formula = resolveFormula(
@@ -221,13 +222,13 @@ export function getCurve(
   const stepMinutes = options.step ?? 5;
 
   const totalMinutes = (to.getTime() - from.getTime()) / 60000;
-  const points = Math.ceil(totalMinutes / stepMinutes) + 1;
+  const points = Math.floor(totalMinutes / stepMinutes) + 1;
 
   if (points > 1000) {
     const suggestedStep = Math.ceil(totalMinutes / 1000);
     const standardSteps = [1, 5, 10, 30, 60];
     const roundedStep = standardSteps.find(s => s >= suggestedStep) ?? suggestedStep;
-    throw new Error(`CURVE_TOO_LARGE:${roundedStep}`);
+    throw CURVE_TOO_LARGE(roundedStep);
   }
 
   const engineProfile = profileToEngine(profile);

@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { initDb } from './db/index.js';
 import { setProfile, getProfile } from './commands/profile.js';
-import { savePreset, listPresets, getPreset, removePreset } from './commands/preset.js';
-import { startSession, endSession, listSessions, getSession, setStomachState, getActiveSession } from './commands/session.js';
+import { setPreset, listPresets, getPreset, removePreset } from './commands/preset.js';
+import { startSession, endSession, listSessions, getSession, setStomachState, getActiveSession, renameSession } from './commands/session.js';
 import { addDrink, startDrink, stopDrink, listDrinks, removeDrink } from './commands/drink.js';
 import { getStatus, getBACAt, getSober, getCurve } from './commands/compute.js';
 import { getStats } from './commands/stats.js';
@@ -10,7 +10,7 @@ import { getConfig, setConfig, listConfig } from './config/index.js';
 import { performAutoClose } from './commands/auto-close.js';
 import { configureOutput, outputSuccess, outputError, logVerbose } from './output/index.js';
 import { parseTimestamp } from './time/index.js';
-import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, CURVE_TOO_LARGE, INVALID_CONFIG_KEY, CONFIG_FILE_CORRUPT, INVALID_VOLUME, INVALID_ABV } from './errors/index.js';
+import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, INVALID_VOLUME, INVALID_ABV } from './errors/index.js';
 import type { OutputOptions } from './output/index.js';
 import type { BACFormula } from './engine/types.js';
 
@@ -39,14 +39,17 @@ function getFormula(cmd: Command): BACFormula | undefined {
   return opts.formula;
 }
 
-function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command): void {
+function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command, touchesState = true): void {
   try {
     configureOutput(getOutputOptions(cmd));
 
     const db = initDb();
     logVerbose('Database initialized');
 
-    const closedSession = performAutoClose(db);
+    let closedSession: number | null = null;
+    if (touchesState) {
+      closedSession = performAutoClose(db);
+    }
 
     const result = fn();
 
@@ -68,31 +71,6 @@ function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command): 
     }
 
     const message = error instanceof Error ? error.message : String(error);
-
-    if (message.startsWith('CURVE_TOO_LARGE:')) {
-      const suggestedStep = parseInt(message.split(':')[1]!, 10);
-      const err = CURVE_TOO_LARGE(suggestedStep);
-      outputError(err, getOutputOptions(cmd));
-      process.exit(err.exitCode);
-    }
-
-    if (message === 'SESSION_NOT_ACTIVE') {
-      const err = SESSION_NOT_ACTIVE();
-      outputError(err, getOutputOptions(cmd));
-      process.exit(err.exitCode);
-    }
-
-    if (message === 'INVALID_CONFIG_KEY') {
-      const err = INVALID_CONFIG_KEY();
-      outputError(err, getOutputOptions(cmd));
-      process.exit(err.exitCode);
-    }
-
-    if (message === 'CONFIG_FILE_CORRUPT') {
-      const err = CONFIG_FILE_CORRUPT();
-      outputError(err, getOutputOptions(cmd));
-      process.exit(err.exitCode);
-    }
 
     console.error(JSON.stringify({
       error: {
@@ -136,21 +114,21 @@ profileCmd
         throw PROFILE_MISSING('profile show');
       }
       return profile;
-    }, cmd);
+    }, cmd, false);
   });
 
 // Preset Commands
 const presetCmd = program.command('preset');
 
 presetCmd
-  .command('save <name>')
-  .description('Save a drink preset')
+  .command('set <name>')
+  .description('Set a drink preset')
   .requiredOption('--vol <ml>', 'Volume in ml', parseFloat)
   .requiredOption('--abv <pct>', 'ABV in percent', parseFloat)
   .action((name, options, cmd) => {
     handleCommand(() => {
       const db = initDb();
-      const result = savePreset(db, name, options.vol, options.abv);
+      const result = setPreset(db, name, options.vol, options.abv);
       db.close();
       return result;
     }, cmd);
@@ -165,7 +143,7 @@ presetCmd
       const result = listPresets(db);
       db.close();
       return result;
-    }, cmd);
+    }, cmd, false);
   });
 
 presetCmd
@@ -177,7 +155,7 @@ presetCmd
       const result = getPreset(db, name);
       db.close();
       return result;
-    }, cmd);
+    }, cmd, false);
   });
 
 presetCmd
@@ -249,7 +227,7 @@ sessionCmd
         throw SESSION_NOT_ACTIVE();
       }
       return session;
-    }, cmd);
+    }, cmd, false);
   });
 
 sessionCmd
@@ -263,7 +241,7 @@ sessionCmd
       const result = listSessions(db, { year: options.year, month: options.month });
       db.close();
       return result;
-    }, cmd);
+    }, cmd, false);
   });
 
 sessionCmd
@@ -280,6 +258,19 @@ sessionCmd
     }, cmd);
   });
 
+sessionCmd
+  .command('rename <id>')
+  .description('Rename a session')
+  .requiredOption('--name <str>', 'New name')
+  .action((id, options, cmd) => {
+    handleCommand(() => {
+      const db = initDb();
+      const result = renameSession(db, parseInt(id, 10), options.name);
+      db.close();
+      return result;
+    }, cmd);
+  });
+
 // Drink Commands
 program
   .command('add [preset]')
@@ -288,6 +279,9 @@ program
   .option('--abv <pct>', 'ABV in percent', parseFloat)
   .option('--at <T>', 'Time')
   .option('--duration <Xm|Xh>', 'Duration')
+  .option('--stomach <empty|some|full>', 'Stomach state')
+  .option('--session <new>', 'Create new session for backdated drink')
+  .option('--name <str>', 'Session name (with --session new)')
   .action((preset, options, cmd) => {
     handleCommand(() => {
       const db = initDb();
@@ -319,6 +313,9 @@ program
         at,
         duration: options.duration,
         presetName,
+        stomach: options.stomach,
+        sessionNew: options.session === 'new',
+        sessionName: options.name,
       });
       db.close();
       return result;
@@ -330,6 +327,9 @@ program
   .description('Start drinking')
   .option('--vol <ml>', 'Volume in ml', parseFloat)
   .option('--abv <pct>', 'ABV in percent', parseFloat)
+  .option('--at <T>', 'Start time')
+  .option('--duration <Xm|Xh>', 'Duration')
+  .option('--stomach <empty|some|full>', 'Stomach state')
   .option('--force', 'Force start (stop current drink)')
   .action((preset, options, cmd) => {
     handleCommand(() => {
@@ -355,11 +355,15 @@ program
         throw INVALID_VOLUME();
       }
       
+      const at = options.at ? parseTimestamp(options.at) : undefined;
       const result = startDrink(db, {
         volumeMl,
         abv,
         presetName,
         force: options.force,
+        at,
+        duration: options.duration,
+        stomach: options.stomach,
       });
       db.close();
       return result;
@@ -391,7 +395,7 @@ drinkCmd
       const result = listDrinks(db);
       db.close();
       return result;
-    }, cmd);
+    }, cmd, false);
   });
 
 drinkCmd
@@ -513,7 +517,7 @@ configCmd
     handleCommand(() => {
       const value = getConfig(key);
       return { key, value };
-    }, cmd);
+    }, cmd, false);
   });
 
 configCmd
@@ -523,7 +527,7 @@ configCmd
     handleCommand(() => {
       const config = listConfig();
       return config;
-    }, cmd);
+    }, cmd, false);
   });
 
 program.parse();

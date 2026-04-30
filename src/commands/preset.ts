@@ -10,7 +10,7 @@ export interface PresetData {
   created_at: string;
 }
 
-export function savePreset(
+export function setPreset(
   db: Database.Database,
   name: string,
   volumeMl: number,

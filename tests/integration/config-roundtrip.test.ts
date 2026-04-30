@@ -1,18 +1,29 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getConfig, setConfig, listConfig } from '../../src/config/index.js';
-import { rmSync } from 'fs';
+import Database from 'better-sqlite3';
+import { migrate } from '../../src/db/migrate.js';
 import { join } from 'path';
 import { homedir } from 'os';
 
-const TEST_CONFIG = join(homedir(), '.liver', 'config');
+const TEST_DB = join(homedir(), '.liver', 'db.sqlite');
+
+function clearConfig() {
+  try {
+    const db = new Database(TEST_DB);
+    db.prepare('DELETE FROM config').run();
+    db.close();
+  } catch {
+    // Ignore errors if DB doesn't exist
+  }
+}
 
 describe('Config Round-Trip Test', () => {
   beforeEach(() => {
-    try { rmSync(TEST_CONFIG); } catch {}
+    clearConfig();
   });
 
   afterEach(() => {
-    try { rmSync(TEST_CONFIG); } catch {}
+    clearConfig();
   });
 
   it('should store numbers as JSON numbers, not strings', () => {

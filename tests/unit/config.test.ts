@@ -1,20 +1,30 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getConfig, setConfig, listConfig, getSweetSpotDefaults } from '../../src/config/index.js';
-import { rmSync } from 'fs';
+import Database from 'better-sqlite3';
 import { join } from 'path';
 import { homedir } from 'os';
 
-const TEST_CONFIG = join(homedir(), '.liver', 'config');
+const TEST_DB = join(homedir(), '.liver', 'db.sqlite');
 
-beforeEach(() => {
-  try { rmSync(TEST_CONFIG); } catch {}
-});
-
-afterEach(() => {
-  try { rmSync(TEST_CONFIG); } catch {}
-});
+function clearConfig() {
+  try {
+    const db = new Database(TEST_DB);
+    db.prepare('DELETE FROM config').run();
+    db.close();
+  } catch {
+    // Ignore errors if DB doesn't exist
+  }
+}
 
 describe('config', () => {
+  beforeEach(() => {
+    clearConfig();
+  });
+  
+  afterEach(() => {
+    clearConfig();
+  });
+  
   it('should set and get config values', () => {
     setConfig('zones.sweet_spot_min', 0.5);
     expect(getConfig('zones.sweet_spot_min')).toBe(0.5);

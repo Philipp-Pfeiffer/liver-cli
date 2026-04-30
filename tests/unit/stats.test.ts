@@ -5,7 +5,7 @@ import { setProfile } from '../../src/commands/profile.js';
 import { startSession, endSession } from '../../src/commands/session.js';
 import { addDrink } from '../../src/commands/drink.js';
 import { getStats } from '../../src/commands/stats.js';
-import { savePreset } from '../../src/commands/preset.js';
+import { setPreset } from '../../src/commands/preset.js';
 
 describe('stats command', () => {
   let db: Database.Database;
@@ -46,7 +46,7 @@ describe('stats command', () => {
   });
   
   it('should aggregate by preset', () => {
-    savePreset(db, 'augustiner', 500, 5.2);
+    setPreset(db, 'augustiner', 500, 5.2);
     startSession(db, {});
     addDrink(db, { volumeMl: 500, abv: 5.2, presetName: 'augustiner' });
     addDrink(db, { volumeMl: 500, abv: 5.2, presetName: 'augustiner' });

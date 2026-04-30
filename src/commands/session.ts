@@ -4,6 +4,7 @@ import {
   SESSION_ALREADY_ACTIVE,
   SESSION_NOT_ACTIVE,
   TIMESTAMP_OUTSIDE_SESSION,
+  ENGINE_PANIC,
 } from '../errors/index.js';
 import { formatISOUTC, nowUTC, parseTimestamp } from '../time/index.js';
 
@@ -49,7 +50,16 @@ export function startSession(
 ): { ok: true; session_id: number } {
   validateSessionName(options.name);
   
-  const stomachState = options.stomach ?? 'some';
+  let stomachState: string;
+  if (options.stomach) {
+    stomachState = options.stomach;
+  } else {
+    // Get last stomach state from most recent ended session
+    const lastSession = db.prepare(
+      `SELECT stomach_initial FROM sessions WHERE ended_at IS NOT NULL ORDER BY ended_at DESC LIMIT 1`
+    ).get() as { stomach_initial: string } | undefined;
+    stomachState = lastSession?.stomach_initial ?? 'some';
+  }
   validateStomachState(stomachState);
   
   const activeSession = getActiveSession(db);
@@ -85,7 +95,7 @@ export function startSession(
   
   const newSession = getActiveSession(db);
   if (!newSession) {
-    throw new Error('Failed to create session');
+    throw ENGINE_PANIC();
   }
   
   return { ok: true, session_id: newSession.id };
@@ -110,6 +120,23 @@ export function getSession(db: Database.Database, id: number): SessionData | nul
   return db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as SessionData | null;
 }
 
+export function renameSession(
+  db: Database.Database,
+  id: number,
+  name: string,
+): { ok: true; session_id: number } {
+  validateSessionName(name);
+  
+  const session = getSession(db, id);
+  if (!session) {
+    throw SESSION_NOT_ACTIVE();
+  }
+  
+  db.prepare('UPDATE sessions SET name = ? WHERE id = ?').run(name, id);
+  
+  return { ok: true, session_id: id };
+}
+
 export function listSessions(
   db: Database.Database,
   options: { year?: string; month?: string } = {},
@@ -118,11 +145,26 @@ export function listSessions(
   const params: unknown[] = [];
   
   if (options.month) {
-    sql += ' AND started_at LIKE ?';
-    params.push(`${options.month}%`);
+    // Parse YYYY-MM and compute UTC range for Berlin timezone
+    const [year, month] = options.month.split('-').map(Number);
+    const berlinStart = new Date(Date.UTC(year!, month! - 1, 1, 0, 0, 0));
+    const berlinEnd = new Date(Date.UTC(year!, month!, 1, 0, 0, 0));
+    // Berlin is UTC+1 or UTC+2, so we need to adjust
+    // For simplicity, we use a wider range and filter precisely in JS
+    sql += ' AND started_at >= ? AND started_at < ?';
+    params.push(
+      new Date(berlinStart.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+      new Date(berlinEnd.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+    );
   } else if (options.year) {
-    sql += ' AND started_at LIKE ?';
-    params.push(`${options.year}%`);
+    const year = parseInt(options.year, 10);
+    const berlinStart = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+    const berlinEnd = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0));
+    sql += ' AND started_at >= ? AND started_at < ?';
+    params.push(
+      new Date(berlinStart.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+      new Date(berlinEnd.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+    );
   }
   
   sql += ' ORDER BY started_at DESC';

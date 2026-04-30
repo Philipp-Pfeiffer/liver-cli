@@ -1,0 +1,11 @@
+{
+  "drink_id": "<number>",
+  "session_id": "<number>",
+  "started_at": "<iso-timestamp>",
+  "finished_at": "<iso-timestamp>",
+  "volume_ml": 500,
+  "abv": 5.2,
+  "preset_name": null,
+  "stomach_state": "full",
+  "bac_after_promille": "<number > 0>"
+}

@@ -3,7 +3,7 @@
 <aside>
 ✅
 
-**Spec Closed v1.0.4.** 9 Batches abgeschlossen (B1–B7 + M1–M9 + Y1–Y7) + 4 Cleanup-Passes (Tabellen-Render, Bug-Fixes, Pharma-Konvention, Command-Reference). Bereit für Coding-Agent-Hand-Off.
+**Spec Closed v1.0.6.** 9 Batches + 6 Cleanup-Passes. Pass 6 (v1.0.6) klärt nach Smoke-Test-Pass 1: Command-Naming (`preset set`), Config-Namespace (`zones.*`/`engine.*`), Duration-Suffix-Pflicht, Historical-Backfill via `--session new`, Spec-Coverage-Mapping verbindlich vor PR.
 **Source-of-Truth-Hierarchie:** Diese Spec ist normativ. [ADR-001: liver – Architecture & Spec](https://www.notion.so/ADR-001-liver-Architecture-Spec-160a90b88e63445d9850d882db12a45f?pvs=21) liefert Architektur-Rationale; bei Widerspruch zwischen beiden Dokumenten gilt **diese Spec**.
 
 </aside>
@@ -31,7 +31,7 @@ liver profile set --weight <kg> --height <cm> --sex <m|f|o> --age <int> [--formu
 liver profile show
 
 # ─── Presets ──────────────────────────────────
-liver preset save <name> --vol <ml> --abv <pct>
+liver preset set <name> --vol <ml> --abv <pct>
 liver preset list
 liver preset show <name>
 liver preset rm <name>
@@ -44,8 +44,8 @@ liver session list [--year <YYYY> | --month <YYYY-MM>]
 liver session stomach <empty|some|full> [--at <T>]
 
 # ─── Drinks ───────────────────────────────────
-liver add <preset> [--at <T>] [--duration <Xm|Xh>]
-liver add --vol <ml> --abv <pct> [--at <T>] [--duration <Xm|Xh>]
+liver add <preset> [--at <T>] [--duration <Xm|Xh>] [--session new [--name <str>] [--stomach <empty|some|full>]]
+liver add --vol <ml> --abv <pct> [--at <T>] [--duration <Xm|Xh>] [--session new [--name <str>] [--stomach <empty|some|full>]]
 liver start <preset>
 liver start --vol <ml> --abv <pct>
 liver stop [--at <T>]
@@ -91,6 +91,9 @@ liver <command> --help
 - **Session-Auto-End:** lazy on next command, threshold = `last_drink.finished_at + minutes_until_sober` (§11). Explizites `session end` setzt `ended_at = now` (oder `--at <T>`).
 - **Profile fehlt** → jeder Compute-Command failt mit `PROFILE_MISSING`.
 - **Disclaimer:** jeder `status`/`bac`/`sober`/`curve`-Output enthält das `disclaimer`-Field.
+- **Config-Namespace:** Config-Keys nutzen Dot-Notation (`zones.*`, `engine.*`). Kanonische Liste in §7.2.
+- **Duration-Strictness:** `--duration` braucht immer Unit-Suffix (`30m`, `2h`). Bare Number ohne Suffix → `INVALID_DURATION` (§0.6, §8).
+- **Historical-Backfill:** `add --at <past>` ohne deckende Session → `TIMESTAMP_OUTSIDE_SESSION`, **außer** `--session new` ist gesetzt (§5.3).
 
 ### 0.4 Per-Command Output-Schemas
 
@@ -163,7 +166,7 @@ liver <command> --help
 
 - Returnen `{"items": [...], "count": <int>}`.
 
-**Mutator-Commands ohne Domain-Output** (`profile set`, `preset save`, `preset rm`, `session end`, `drink rm`, `config set`):
+**Mutator-Commands ohne Domain-Output** (`profile set`, `preset set`, `preset rm`, `session end`, `drink rm`, `config set`):
 
 - Returnen `{"ok": true, "<entity>_id": <id>}` (bzw. `"name": <preset-name>`).
 - `stop` returnt zusätzlich `drink_id` + `finished_at` + `duration_secs`.
@@ -173,8 +176,8 @@ liver <command> --help
 ```bash
 # Setup einmalig:
 liver profile set --weight 78 --height 184 --sex m --age 22
-liver preset save augustiner --vol 500 --abv 5.2
-liver preset save shot --vol 40 --abv 40
+liver preset set augustiner --vol 500 --abv 5.2
+liver preset set shot --vol 40 --abv 40
 
 # Abend:
 liver session start --name "Maibock" --stomach full
@@ -191,7 +194,7 @@ liver session end                         # explizit beenden
 ### 0.6 Argument-Format-Konventionen
 
 - **`<T>` (Timestamp):** chrono-node-Input (§4.3) — `19:30`, `2026-04-28T19:30+02:00`, `yesterday 21:00`, `2h ago`. Default-Tag bei reiner Uhrzeit per §4.4.
-- **`<duration>`:** `Xm` (Minuten) oder `Xh` (Stunden). `15m`, `2h`, `0` (instant). Range 0–24h (§8).
+- **`<duration>`:** `Xm` (Minuten) oder `Xh` (Stunden). `15m`, `2h`. Bare Number ohne Suffix (z.B. `30`) → `INVALID_DURATION`. Range 0–24h (§8). `0` allein erlaubt als „instant" (kein Suffix nötig).
 - **`<id>`:** Integer, sichtbar in `drink list` / `session list`.
 - **Preset-`<name>`:** 1–32 Zeichen `[a-z0-9_-]`, lowercase (§7.2). Eingabe wird auto-lowercased.
 - **Session-`<name>`:** optional, 0–64 Zeichen.
@@ -415,7 +418,7 @@ function resolveStomachStateAt(
 
 ### 5.3 Edge Cases
 
-- **Drink außerhalb jeder Session** (`add --at <T>` und `T` liegt in keiner Session) → Fehler `TIMESTAMP_OUTSIDE_SESSION`. Kein Auto-Create.
+- **Drink außerhalb jeder Session** (`add --at <T>` und `T` liegt in keiner Session) → Fehler `TIMESTAMP_OUTSIDE_SESSION`, **außer** explizit `--session new [--name <str>] [--stomach <state>]` ist gesetzt: liver legt eine retroaktive Session an mit `started_at = T`, `ended_at` per Auto-Close-Regel (§11.2), und ordnet den Drink dieser Session zu. Ohne den Flag: kein Auto-Create.
 - **`session stomach --at <T>` außerhalb der Session-Grenzen** → Fehler `TIMESTAMP_OUTSIDE_SESSION`.
 - **Falsch geloggter Stomach-Event:** kein Edit-Command in v0.x. Workaround per Doku: erneut `session stomach <correct> --at <T+1min>` setzen — der spätere gewinnt im Resolver. UPSERT bewusst nicht implementiert.
 
@@ -503,8 +506,9 @@ liver/
     - `abv` (REAL, NOT NULL, 0–100)
     - `preset_name` (TEXT, NULL, FK → `presets.name`)
 - **`config`** — Key-Value-Store für `liver config set`.
-    - `key` (TEXT, PK)
+    - `key` (TEXT, PK) — Dot-Namespacing erforderlich: `zones.*`, `engine.*`. Flache Keys ohne Punkt werden unter `user.`-Namespace abgelegt.
     - `value` (TEXT, NOT NULL — JSON-encoded für Nicht-String-Values)
+    - **Kanonische Keys (v1.0.6):** `zones.sweet_spot_min` (REAL, Default 0.4), `zones.sweet_spot_max` (REAL, Default 0.8), `engine.default_formula` (TEXT, Default `watson`). Unbekannter Key bei `config set` → `INVALID_CONFIG_KEY` (Exit 4).
 
 ---
 
@@ -705,7 +709,7 @@ Der Lazy-Check + `UPDATE ended_at` läuft in einer Transaction, um Race Conditio
 - **Migrations** — ja
 - **`session start --stomach X`** (sessions + stomach_events) — ja
 - **`session start --auto`** (close-old + open-new) — ja
-- **`drink rm <id>`** mit potential Cache-Update — ja
+- **`drink rm <id>`** — nur ja, **wenn** ein Cache-Update implementiert wird (z.B. denormalisiertes `peak_promille` aus §9.5). Bei einfachem `DELETE` ohne Cache-Update reicht ein Single-Statement.
 - **Lazy-Auto-Close** (`session.ended_at` setzen) — ja
 - **`add`** (single INSERT in drinks) — nein
 - **`start`** / **`stop`** (single UPDATE) — nein
@@ -731,7 +735,19 @@ Der Lazy-Check + `UPDATE ended_at` läuft in einer Transaction, um Race Conditio
     - `build` — tsup
 - **Kein WASM-Rebuild im CI** — Vendored. Manueller Rebuild via `scripts/rebuild-wasm.sh`.
 
-### 13.2 Release
+### 13.2 Test-Coverage-Anforderungen (verbindlich für v1.0)
+
+Neben Lint und Build muss die Test-Suite folgende Kategorien abdecken, damit „grüne CI“ tatsächlich Spec-Compliance bedeutet. Erfahrung aus dem ersten Implementation-Pass: 77/77 Tests grün bei trotzdem 4 🔴-Spec-Verletzungen, weil Tests strukturelle Existenz prüften statt semantischer Korrektheit.
+
+- **Golden-Fixture-Tests für JSON-Outputs** — `stats`, `curve`, `status`, `bac`, `add`, `start` müssen gegen committed Fixtures verglichen werden, nicht nur auf strukturelle Existenz von Feldern. Verhindert Hard-Coded-Defaults (z.B. `avg_peak_promille = 0`).
+- **Auto-Close-Integration-Test** — End-to-End: `profile set` → `session start` → `add` → Zeit auf nach `sober_at` mocken (oder Zeit-Injection) → beliebigen Command ausführen → erwarte `auto_closed_session: <id>` im Output und `sessions.ended_at` gesetzt. Verhindert Stub-Implementierungen die immer `null` returnen.
+- **Sex-Differenzierungs-Test** — drei Profiles (`m`/`f`/`o`) mit identischem Drink-Setup, erwarte drei unterschiedliche `bac_promille`-Werte (`o` darf nicht auf `m` kollabieren). Verhindert Sex-Coercion-Bugs am WASM-Boundary.
+- **Day-Bucketing-Test** — Drink mit `started_at = 2026-04-28T23:30+02:00` muss in `stats --month 2026-04` zu `drinking_days` zählen, nicht in 2026-04-29. Verhindert UTC-vs-Berlin-Confusion in Range-Queries (§9.2).
+- **Property-Round-Trip-Test für `config`** — `config set foo 0.3` → `config get foo` muss Number `0.3` returnen, nicht String `"0.3"` (§7.2).
+- **Command-Surface-Test** — `liver --help`-Output gegen §0.1-Liste committen. Verhindert Command-Drift (z.B. `add-raw` statt `add --vol`).
+- **Spec-Coverage-Mapping (Pflicht vor erstem PR)** — Coding-Agent liefert Tabelle: jede §-Sektion → File:Line oder „nicht implementiert". Verhindert übersehene Commands. Lehre aus Smoke-Test-Pass 1 (v1.0.6): 5 Top-Level-Commands fehlten komplett, weil keine systematische Spec-Abdeckung erfolgte.
+
+### 13.4 Release
 
 - **Versionierung:** semver. `CHANGELOG.md` im Keep-a-Changelog-Format.
 - **Trigger:** Push eines `v*.*.*` Git-Tags startet den Release-Workflow.
@@ -859,6 +875,21 @@ Harness-Skill wird **nicht** Teil dieser v0.x-Spec. Wird per separatem **ADR-002
 - ✅ **M9.b** `busy_timeout = 0` → sofortiger `DB_LOCKED`, Caller retried (Agent-friendly)
 - ✅ **M9.c** Explizite Liste transactional Operations in Spec §12.3
 - ✅ **M9.d** Eine Connection pro CLI-Call
+
+### Cleanup-Pass 6 — Smoke-Test-Pass-1 Klärungen (v1.0.6)
+
+- ✅ §0.1 + §0.4 + §0.5: `preset save` → `preset set` (Konsistenz mit `profile set`/`config set`)
+- ✅ §0.3 + §7.2: Config-Keys nutzen Dot-Namespacing, kanonische Keys aufgezählt
+- ✅ §0.6: `<duration>` ohne Unit-Suffix → `INVALID_DURATION`
+- ✅ §0.1 + §5.3: `add --at <past> --session new` für retroaktive Backfill-Sessions
+- ✅ §13.2: Spec-Coverage-Mapping als verbindlicher Pre-PR-Schritt
+- ✅ Lehre aus Smoke-Test 1: 16/30 Fail trotz Fix-Pass — punktuelle Findings-Liste reicht nicht, Coding-Agent muss Spec systematisch abdecken.
+
+### Cleanup-Pass 5 — Test-Coverage + §12.3-Präzisierung (v1.0.5)
+
+- ✅ §12.3 `drink rm`: Transaction-Pflicht jetzt explizit konditional (nur bei Cache-Update)
+- ✅ §13.2 neue Sektion: Test-Coverage-Anforderungen verbindlich für v1.0
+- ✅ Lehre aus erstem Implementation-Pass: grüne CI ≠ Spec-Compliant. Tests müssen Hard-Coded-Stubs und immer-`null`-Returns aktiv prüfen.
 
 ### Cleanup-Pass 4 — Command-Reference (v1.0.4)
 

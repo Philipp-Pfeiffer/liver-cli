@@ -29,8 +29,8 @@ describe('full workflow', () => {
   
   it('should complete typical evening workflow', () => {
     run(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
-    run(dbPath, 'preset save augustiner --vol 500 --abv 5.2');
-    run(dbPath, 'preset save shot --vol 40 --abv 40');
+    run(dbPath, 'preset set augustiner --vol 500 --abv 5.2');
+    run(dbPath, 'preset set shot --vol 40 --abv 40');
     
     const session = run(dbPath, 'session start --name "Maibock" --stomach full');
     expect(session.session_id).toBeGreaterThan(0);
@@ -75,7 +75,7 @@ describe('full workflow', () => {
   
   it('should auto-close sessions', () => {
     run(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
-    run(dbPath, 'preset save beer --vol 500 --abv 5');
+    run(dbPath, 'preset set beer --vol 500 --abv 5');
     
     const session = run(dbPath, 'session start');
     run(dbPath, 'add beer');
