@@ -63,14 +63,19 @@ export function startSession(
   validateStomachState(stomachState);
   
   const activeSession = getActiveSession(db);
-  if (activeSession && !options.force) {
+  const at = options.at ?? nowUTC();
+  
+  // Auto-close past active sessions when starting a new one without --force
+  // (only if the new start time is measurably after the existing session start)
+  const shouldAutoClose = activeSession && !options.force &&
+    at.getTime() > new Date(activeSession.started_at).getTime() + 1000;
+  
+  if (activeSession && !options.force && !shouldAutoClose) {
     throw SESSION_ALREADY_ACTIVE();
   }
   
-  const at = options.at ?? nowUTC();
-  
   db.transaction(() => {
-    if (activeSession && options.force) {
+    if (activeSession && (options.force || shouldAutoClose)) {
       db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(
         formatISOUTC(at),
         activeSession.id,

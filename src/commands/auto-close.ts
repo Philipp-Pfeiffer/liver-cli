@@ -28,9 +28,9 @@ export function performAutoClose(db: Database.Database, referenceTime?: Date): n
     return null;
   }
 
-  // SKIP auto-close if reference time is far in the future/past relative to
-  // the session. This prevents auto-close from killing historical/future
-  // test sessions when the system clock differs from the session time.
+  // SKIP auto-close if the last drink is very old (>24h).
+  // Prevents performAutoClose from killing historical test sessions
+  // when the system clock differs from the session time.
   const hoursSinceLastDrink = (ref.getTime() - lastFinishedAt.getTime()) / (1000 * 60 * 60);
   if (hoursSinceLastDrink > 24) {
     return null;

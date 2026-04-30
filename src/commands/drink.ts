@@ -66,7 +66,7 @@ export function addDrink(
   const durationMinutes = options.duration ? parseDuration(options.duration) : 0;
   validateDuration(durationMinutes);
   
-  let session = findSessionForTimestamp(db, at);
+  let session = options.sessionNew ? null : findSessionForTimestamp(db, at);
   if (!session) {
     if (options.sessionNew) {
       // Close any active sessions before creating a new one
