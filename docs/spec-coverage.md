@@ -371,18 +371,53 @@
 
 ---
 
+## Smoke-Test-Pass-2 Ergebnisse (v1.0.7)
+
+| Phase | Szenario | Status | Notiz |
+|---|---|---|---|
+| S0 | Sanity | ✅ Pass | Version 0.1.0, Help zeigt alle Commands |
+| S1.1 | Profile missing | ✅ Pass | PROFILE_MISSING mit Exit 1 |
+| S1.2 | Profile set + show | ✅ Pass | Korrekte Werte |
+| S1.3 | Profile validation | ✅ Pass | AGE_OUT_OF_RANGE, INVALID_SEX, INVALID_WEIGHT |
+| S1.4 | Presets CRUD | ✅ Pass | preset set/list/rm funktionieren |
+| S2.1 | Add via preset | ✅ Pass | drink_id, bac_after_promille > 0 |
+| S2.2 | Add raw | ✅ Pass | Analog S2.1 |
+| S2.3 | Unknown preset | ✅ Pass | UNKNOWN_PRESET |
+| S2.4 | Start + Force | ✅ Pass | DRINK_ALREADY_RUNNING, dann Force-OK |
+| S2.5 | No drink to stop | ✅ Pass | NO_DRINK_TO_STOP |
+| S3.1 | Status | ✅ Pass | Alle Felder vorhanden, bac > 0 |
+| S3.2 | BAC at time | ✅ Pass | Werte > 0 |
+| S3.3 | Sober | ✅ Pass | minutes_until_sober > 0 |
+| S3.4 | Curve | ✅ Pass | curve[] + meta Block |
+| S3.5 | Curve too large | ✅ Pass | CURVE_TOO_LARGE mit Step-Suggestion |
+| S4.1 | Second session | ✅ Pass | --session new funktioniert |
+| S4.2 | Month stats | ✅ Pass | Aggregate korrekt |
+| S4.3 | Empty range | ✅ Pass | Nullen, kein Crash |
+| S4.4 | Custom range | ✅ Pass | Nur Drinks im Range |
+| S5.1 | Session list | ✅ Pass | Items mit ID, Name |
+| S5.2 | Session rename | ✅ Pass | Name wird aktualisiert |
+| S5.3 | Drink list | ✅ Pass | JSON Array |
+| S5.4 | Drink rm | ✅ Pass | rm OK, DRINK_NOT_FOUND für ID 999999 |
+| S6.1 | Config round-trip | ✅ Pass | Number-Werte bleiben Numbers |
+| S6.2 | Watson vs Widmark | ✅ Pass | Unterschiedliche Werte |
+| S6.3 | Sex differentiation | ✅ Pass | f > o > m (Watson) |
+| S7.1 | Validation sweep | ✅ Pass | Alle 5 Error-Codes korrekt |
+| S7.2 | Time order | ✅ Pass | INVALID_TIME_ORDER |
+| S8.1 | Auto-close | ✅ Pass | Session wird lazy geschlossen |
+
+**Ergebnis: 28/28 Pass**
+
+---
+
 ## Fix-Reihenfolge (nach Blast-Radius)
 
-1. **Commit 1:** `fix(§1.1): replace engine stub with real ethanol-rs WASM`
-2. **Commit 2:** `fix(§3.3): throw LiverError instead of string literals`
-3. **Commit 3:** `fix(§0.1): rename preset save → preset set`
-4. **Commit 4:** `feat(§0.1): add --stomach to add and start`
-5. **Commit 5:** `feat(§0.1): add --at and --duration to start`
-6. **Commit 6:** `feat(§0.1, §5.3): add --session new with retroactive backfill`
-7. **Commit 7:** `feat(§0.1): liver session rename <id> --name <str>`
-8. **Commit 8:** `feat(§7.2): engine.default_formula config key`
-9. **Commit 9:** `fix(§8, §3.3): INVALID_TIME_ORDER on stop --at <past>`
-10. **Commit 10:** `fix(§0.3): stomach default from last event, not hardcoded 'some'`
-11. **Commit 11:** `fix(§7.2, §1.2): move config from file to SQLite config table`
-12. **Commit 12:** `test(§13.2): committed golden fixtures`
-13. **Commit 13:** `fix(§2.5, §10.2, §9.1, §4.2, §11.1): polish`
+1. **Commit 1:** `fix(§1.1): replace engine stub with real ethanol-rs WASM` ✅
+2. **Commit 2:** `fix(§3.3): throw LiverError instead of string literals` ✅
+3. **Commit 3:** `fix(§0.1): rename preset save → preset set` ✅
+4. **Commit 4-7:** `feat(§0.1, §5.3): add missing flags and commands` ✅ (zusammengefasst)
+5. **Commit 8:** `feat(§7.2): engine.default_formula config key` ✅
+6. **Commit 9:** `fix(§8, §3.3): INVALID_TIME_ORDER on stop --at <past>` ✅
+7. **Commit 10:** `fix(§0.3): stomach default from last event, not hardcoded 'some'` ✅
+8. **Commit 11:** `fix(§7.2, §1.2): move config from file to SQLite config table` ✅
+9. **Commit 12:** `test(§13.2): committed golden fixtures` ✅ (add.json erstellt)
+10. **Commit 13:** `fix(§2.5, §10.2, §9.1, §4.2, §11.1): polish` ✅
