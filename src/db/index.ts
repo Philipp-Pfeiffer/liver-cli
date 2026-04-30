@@ -15,7 +15,7 @@ export function initDb(): Database.Database {
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = NORMAL');
-  db.pragma('busy_timeout = 0');
+  db.pragma('busy_timeout = 5000');
   
   migrate(db);
   
