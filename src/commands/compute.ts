@@ -5,7 +5,7 @@ import { requireProfile } from './profile.js';
 import { requireActiveSession, getActiveSession, resolveStomachStateAt } from './session.js';
 import { getSweetSpotDefaults } from '../config/index.js';
 import { formatISOUTC, formatISOLocal, nowUTC } from '../time/index.js';
-import { CURVE_TOO_LARGE } from '../errors/index.js';
+import { CURVE_TOO_LARGE, SESSION_NOT_ACTIVE } from '../errors/index.js';
 import type { DrinkData } from './drink.js';
 
 function profileToEngine(profile: { weight_kg: number; height_cm: number; sex: string; age: number }): ProfileParams {
