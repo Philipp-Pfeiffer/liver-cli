@@ -10,7 +10,7 @@ import { getConfig, setConfig, listConfig } from './config/index.js';
 import { performAutoClose } from './commands/auto-close.js';
 import { configureOutput, outputSuccess, outputError, logVerbose } from './output/index.js';
 import { parseTimestamp, nowUTC } from './time/index.js';
-import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, INVALID_VOLUME, INVALID_ABV, DB_LOCKED } from './errors/index.js';
+import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, INVALID_VOLUME, INVALID_ABV, DB_LOCKED, DATABASE_CORRUPTED } from './errors/index.js';
 import type { OutputOptions } from './output/index.js';
 import type { BACFormula } from './engine/types.js';
 
@@ -19,7 +19,7 @@ const program = new Command();
 program
   .name('liver')
   .description('BAC tracking CLI')
-  .version('0.1.0')
+  .version('0.1.2')
   .option('--human', 'Human-readable output')
   .option('--no-color', 'Disable colors')
   .option('-v, --verbose', 'Verbose logging')
@@ -73,29 +73,9 @@ function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command, t
     // Map SQLite errors to LiverError codes
     if (error instanceof Database.SqliteError) {
       if (error.code === 'SQLITE_BUSY') {
-      if (error.code === 'SQLITE_NOTADB') {
-        const dbError = DATABASE_CORRUPTED();
-        outputError(dbError, getOutputOptions(cmd));
-        process.exit(dbError.exitCode);
-      }
         const dbError = DB_LOCKED();
-      if (error.code === 'SQLITE_NOTADB') {
-        const dbError = DATABASE_CORRUPTED();
         outputError(dbError, getOutputOptions(cmd));
         process.exit(dbError.exitCode);
-      }
-        outputError(dbError, getOutputOptions(cmd));
-      if (error.code === 'SQLITE_NOTADB') {
-        const dbError = DATABASE_CORRUPTED();
-        outputError(dbError, getOutputOptions(cmd));
-        process.exit(dbError.exitCode);
-      }
-        process.exit(dbError.exitCode);
-      if (error.code === 'SQLITE_NOTADB') {
-        const dbError = DATABASE_CORRUPTED();
-        outputError(dbError, getOutputOptions(cmd));
-        process.exit(dbError.exitCode);
-      }
       }
       if (error.code === 'SQLITE_NOTADB') {
         const dbError = DATABASE_CORRUPTED();
