@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'child_process';
-import { existsSync, rmSync, mkdtempSync } from 'fs';
-import { join } from 'path';
+import { existsSync, rmSync, mkdtempSync, readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
+
+const pkgPath = join(dirname(fileURLToPath(import.meta.url)), '../../package.json');
+const expectedVersion = JSON.parse(readFileSync(pkgPath, 'utf8')).version;
 
 function createTestDb() {
   const testDir = mkdtempSync(join(tmpdir(), 'liver-test-'));
@@ -29,7 +33,7 @@ describe('CLI integration', () => {
 
   it('should show version', () => {
     const result = execSync('LIVER_DB=/nonexistent node dist/index.js --version', { encoding: 'utf-8' });
-    expect(result.trim()).toContain('0.1.0');
+    expect(result.trim()).toContain(expectedVersion);
   });
 
   it('should set profile', () => {
