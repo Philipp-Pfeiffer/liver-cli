@@ -1,5 +1,5 @@
 {
-  "name": "liver",
+  "name": "liver-cli",
   "version": "0.1.2",
   "description": "BAC tracking CLI",
   "type": "module",
