@@ -1,0 +1,23 @@
+# Source (we publish dist only)
+src/
+tests/
+plans/
+.github/
+*.config.ts
+tsconfig.json
+biome.json
+
+# Internal dev artifacts
+FIX_PASS_*.md
+docs/FIX_PASS_*.md
+docs/DIAGNOSE_*.md
+docs/ROOT_CAUSE_*.md
+docs/spec-coverage.md
+AGENTS.md
+
+# Notion exports (should not be in repo at all)
+*276c736ecd004cf49b544c1dc6198548*
+
+# Misc
+.env*
+.DS_Store
