@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { initDb } from './db/index.js';
+import { initDb, Database } from './db/index.js';
 import { setProfile, getProfile } from './commands/profile.js';
 import { setPreset, listPresets, getPreset, removePreset } from './commands/preset.js';
 import { startSession, endSession, listSessions, getSession, setStomachState, getActiveSession, renameSession } from './commands/session.js';
@@ -9,8 +9,8 @@ import { getStats } from './commands/stats.js';
 import { getConfig, setConfig, listConfig } from './config/index.js';
 import { performAutoClose } from './commands/auto-close.js';
 import { configureOutput, outputSuccess, outputError, logVerbose } from './output/index.js';
-import { parseTimestamp } from './time/index.js';
-import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, INVALID_VOLUME, INVALID_ABV } from './errors/index.js';
+import { parseTimestamp, nowUTC } from './time/index.js';
+import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, INVALID_VOLUME, INVALID_ABV, DB_LOCKED, DATABASE_CORRUPTED } from './errors/index.js';
 import type { OutputOptions } from './output/index.js';
 import type { BACFormula } from './engine/types.js';
 
@@ -19,7 +19,7 @@ const program = new Command();
 program
   .name('liver')
   .description('BAC tracking CLI')
-  .version('0.1.0')
+  .version('0.1.2')
   .option('--human', 'Human-readable output')
   .option('--no-color', 'Disable colors')
   .option('-v, --verbose', 'Verbose logging')
@@ -48,7 +48,7 @@ function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command, t
 
     let closedSession: number | null = null;
     if (touchesState) {
-      closedSession = performAutoClose(db);
+      closedSession = performAutoClose(db, nowUTC());
     }
 
     const result = fn();
@@ -68,6 +68,20 @@ function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command, t
     if (error instanceof LiverError) {
       outputError(error, getOutputOptions(cmd));
       process.exit(error.exitCode);
+    }
+
+    // Map SQLite errors to LiverError codes
+    if (error instanceof Database.SqliteError) {
+      if (error.code === 'SQLITE_BUSY') {
+        const dbError = DB_LOCKED();
+        outputError(dbError, getOutputOptions(cmd));
+        process.exit(dbError.exitCode);
+      }
+      if (error.code === 'SQLITE_NOTADB') {
+        const dbError = DATABASE_CORRUPTED();
+        outputError(dbError, getOutputOptions(cmd));
+        process.exit(dbError.exitCode);
+      }
     }
 
     const message = error instanceof Error ? error.message : String(error);
@@ -462,10 +476,12 @@ program
 program
   .command('sober')
   .description('Time until sober')
-  .action((_options, cmd) => {
+  .option('--at <T>', 'Time')
+  .action((options, cmd) => {
     handleCommand(() => {
       const db = initDb();
-      const result = getSober(db, { formula: getFormula(cmd) });
+      const at = options.at ? parseTimestamp(options.at) : undefined;
+      const result = getSober(db, { formula: getFormula(cmd), at });
       db.close();
       return result;
     }, cmd);

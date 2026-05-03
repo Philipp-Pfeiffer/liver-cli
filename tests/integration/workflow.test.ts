@@ -68,7 +68,10 @@ describe('full workflow', () => {
     
     run(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
     
-    expect(() => run(dbPath, 'status')).toThrow();
+    // Status without session returns no-session JSON (not an error)
+    const status = run(dbPath, 'status');
+    expect(status.session_id).toBeNull();
+    expect(status.warnings).toContain('no_active_session');
     
     expect(() => run(dbPath, 'add unknown')).toThrow();
   });

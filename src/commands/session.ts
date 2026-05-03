@@ -63,11 +63,11 @@ export function startSession(
   validateStomachState(stomachState);
   
   const activeSession = getActiveSession(db);
+  const at = options.at ?? nowUTC();
+  
   if (activeSession && !options.force) {
     throw SESSION_ALREADY_ACTIVE();
   }
-  
-  const at = options.at ?? nowUTC();
   
   db.transaction(() => {
     if (activeSession && options.force) {
@@ -91,7 +91,7 @@ export function startSession(
     db.prepare(
       'INSERT INTO stomach_events (session_id, at, state) VALUES (?, ?, ?)'
     ).run(sessionId, formatISOUTC(at), stomachState);
-  })();
+  }).immediate();
   
   const newSession = getActiveSession(db);
   if (!newSession) {
@@ -108,10 +108,12 @@ export function endSession(
   const session = requireActiveSession(db);
   const at = options.at ?? nowUTC();
   
-  db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(
-    formatISOUTC(at),
-    session.id,
-  );
+  db.transaction(() => {
+    db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(
+      formatISOUTC(at),
+      session.id,
+    );
+  }).immediate();
   
   return { ok: true, session_id: session.id };
 }
@@ -140,7 +142,7 @@ export function renameSession(
 export function listSessions(
   db: Database.Database,
   options: { year?: string; month?: string } = {},
-): { items: SessionData[]; count: number } {
+): { sessions: SessionData[]; count: number } {
   let sql = 'SELECT * FROM sessions WHERE 1=1';
   const params: unknown[] = [];
   
@@ -169,8 +171,8 @@ export function listSessions(
   
   sql += ' ORDER BY started_at DESC';
   
-  const items = db.prepare(sql).all(...params) as SessionData[];
-  return { items, count: items.length };
+  const sessions = db.prepare(sql).all(...params) as SessionData[];
+  return { sessions, count: sessions.length };
 }
 
 export function setStomachState(
@@ -195,9 +197,11 @@ export function setStomachState(
     }
   }
   
-  db.prepare(
-    'INSERT INTO stomach_events (session_id, at, state) VALUES (?, ?, ?)'
-  ).run(session.id, formatISOUTC(at), state);
+  db.transaction(() => {
+    db.prepare(
+      'INSERT INTO stomach_events (session_id, at, state) VALUES (?, ?, ?)'
+    ).run(session.id, formatISOUTC(at), state);
+  }).immediate();
   
   return { ok: true, session_id: session.id };
 }

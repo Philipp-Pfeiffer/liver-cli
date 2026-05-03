@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
+import { SCHEMA_MIGRATION_FAILED } from '../errors/index.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const LIVER_DIR = join(homedir(), '.liver');
@@ -15,9 +16,16 @@ function migrateConfigFile(db: Database.Database): void {
     const content = readFileSync(CONFIG_PATH, 'utf-8');
     const config = JSON.parse(content) as Record<string, unknown>;
     
+    const keyMapping: Record<string, string> = {
+      sweet_spot_min: 'zones.sweet_spot_min',
+      sweet_spot_max: 'zones.sweet_spot_max',
+      default_formula: 'engine.default_formula',
+    };
+    
     for (const [key, value] of Object.entries(config)) {
+      const normalizedKey = keyMapping[key] ?? key;
       db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)').run(
-        key,
+        normalizedKey,
         JSON.stringify(value),
       );
     }
@@ -41,6 +49,14 @@ export function migrate(db: Database.Database): void {
   const files = readdirSync(migrationsDir)
     .filter(f => f.endsWith('.sql'))
     .sort();
+  
+  const maxVersion = files.length > 0
+    ? parseInt(files[files.length - 1]!.slice(0, 3), 10)
+    : 0;
+  
+  if (currentVersion > maxVersion) {
+    throw SCHEMA_MIGRATION_FAILED();
+  }
   
   for (const file of files) {
     const version = parseInt(file.slice(0, 3), 10);

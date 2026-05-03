@@ -33,8 +33,9 @@ describe('Auto-Close Integration Test', () => {
     // Session should still be active immediately after drink
     expect(getActiveSession(db)).not.toBeNull();
     
-    // Advance time by 2 hours - should be past sober time for a small drink
-    const futureTime = new Date(baseTime.getTime() + 2 * 60 * 60 * 1000);
+    // Advance time by 12 hours - should be past sober time for a small drink
+    // (elimination rate 0.015‰/h ≈ 10h for this drink)
+    const futureTime = new Date(baseTime.getTime() + 12 * 60 * 60 * 1000);
     vi.setSystemTime(futureTime);
     
     // Auto-close should detect that sober time has passed

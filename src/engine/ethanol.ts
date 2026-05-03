@@ -27,8 +27,9 @@ const STOMACH_ABSORPTION: Record<string, number> = {
   full: 0.65,
 };
 
-// Standard elimination rate: ~0.015% per hour
-const ELIMINATION_RATE = 0.015;
+// Standard elimination rate: 0.015 ‰/h = 0.0015 %/h
+// (Engine calculates in %; callers convert to ‰ via ×10)
+const ELIMINATION_RATE = 0.0015;
 
 // Ethanol density: 0.789 g/ml
 const ETHANOL_DENSITY = 0.789;
@@ -129,7 +130,7 @@ export function generateCurve(
 ): CurveResult {
   const points = [];
   for (let offset = fromOffsetMinutes; offset <= toOffsetMinutes; offset += stepMinutes) {
-    const bacPercent = calculateBAC(profile, drinks, formula, -offset);
+    const bacPercent = calculateBAC(profile, drinks, formula, 0);
     points.push({ offsetMinutes: offset, bacPercent });
   }
   return { points };

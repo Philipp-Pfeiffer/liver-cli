@@ -5,7 +5,7 @@ BAC tracking CLI
 ## Installation
 
 ```bash
-npm install -g liver
+npm install -g liver-cli
 ```
 
 ## Usage
