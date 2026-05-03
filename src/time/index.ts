@@ -116,13 +116,14 @@ export function formatISOLocal(date: Date): string {
   const berlinDate = new Date(date.toLocaleString('en-US', { timeZone: TIMEZONE }));
   const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
   const diffMs = berlinDate.getTime() - utcDate.getTime();
-  const tzOffset = -diffMs / 60000;
+  const tzOffset = diffMs / 60000;
   const absOffset = Math.abs(tzOffset);
   const hours = Math.floor(absOffset / 60).toString().padStart(2, '0');
   const minutes = (absOffset % 60).toString().padStart(2, '0');
   const sign = tzOffset >= 0 ? '+' : '-';
-  
-  const iso = date.toISOString();
+
+  const localDate = new Date(date.getTime() + diffMs);
+  const iso = localDate.toISOString();
   return iso.slice(0, -1) + sign + hours + ':' + minutes;
 }
 
