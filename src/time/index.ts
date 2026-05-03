@@ -39,32 +39,71 @@ function berlinMidnightToUTC(year: number, month: number, day: number): Date {
 }
 
 export function parseTimestamp(input: string, referenceDate: Date = new Date()): Date {
-  // Fast-path for bare ISO dates (YYYY-MM-DD) → treat as Berlin midnight
-  const isoDateMatch = input.match(/^\d{4}-\d{2}-\d{2}$/);
-  if (isoDateMatch) {
-    const [year, month, day] = input.split('-').map(Number);
-    return berlinMidnightToUTC(year!, month!, day!);
+  // Reject empty/whitespace-only strings
+  if (!input || input.trim() === '') {
+    throw BAD_TIME_FORMAT();
   }
 
-  const results = chrono.parse(input, referenceDate, { forwardDate: false });
-  
+  const trimmed = input.trim();
+
+  // Fast-path for bare ISO dates (YYYY-MM-DD) → treat as Berlin midnight
+  const isoDateMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}$/);
+  if (isoDateMatch) {
+    const [year, month, day] = trimmed.split('-').map(Number);
+    if (month < 1 || month > 12) {
+      throw BAD_TIME_FORMAT();
+    }
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day < 1 || day > daysInMonth) {
+      throw BAD_TIME_FORMAT();
+    }
+    return berlinMidnightToUTC(year, month, day);
+  }
+
+  // Validate YYYY-MM-DD prefix if present
+  const datePrefixMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (datePrefixMatch) {
+    const year = parseInt(datePrefixMatch[1], 10);
+    const month = parseInt(datePrefixMatch[2], 10);
+    const day = parseInt(datePrefixMatch[3], 10);
+
+    if (month < 1 || month > 12) {
+      throw BAD_TIME_FORMAT();
+    }
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day < 1 || day > daysInMonth) {
+      throw BAD_TIME_FORMAT();
+    }
+
+    if (isNaN(Date.parse(trimmed))) {
+      throw BAD_TIME_FORMAT();
+    }
+  }
+
+  const results = chrono.parse(trimmed, referenceDate, { forwardDate: false });
+
   if (results.length === 0) {
     throw BAD_TIME_FORMAT();
   }
-  
+
   const result = results[0];
   let date = result.start.date();
-  
+
+  if (isNaN(date.getTime())) {
+    throw BAD_TIME_FORMAT();
+  }
+
   if (!result.start.isCertain('year') && !result.start.isCertain('month') && !result.start.isCertain('day')) {
     const today = new Date(referenceDate);
     today.setHours(date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
-    
+
     if (today > referenceDate) {
       today.setDate(today.getDate() - 1);
     }
     date = today;
   }
-  
+
   return date;
 }
 
