@@ -5,3 +5,4 @@ dist/
 coverage/
 *.sqlite
 *.sqlite-journal
+FIX_PASS_*.md
