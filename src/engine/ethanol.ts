@@ -27,9 +27,10 @@ const STOMACH_ABSORPTION: Record<string, number> = {
   full: 0.65,
 };
 
-// Standard elimination rate: 0.015 ‰/h = 0.0015 %/h
+// Standard elimination rate: 0.15 ‰/h = 0.015 %/h
+// Medical average for men: ~0.015% per hour = 0.15 promille per hour
 // (Engine calculates in %; callers convert to ‰ via ×10)
-const ELIMINATION_RATE = 0.0015;
+const ELIMINATION_RATE = 0.015;
 
 // Ethanol density: 0.789 g/ml
 const ETHANOL_DENSITY = 0.789;
