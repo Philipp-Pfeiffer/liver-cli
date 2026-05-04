@@ -194,6 +194,10 @@ export function startDrink(
   
   db.transaction(() => {
     if (runningDrink && options.force) {
+      const runningDrinkStart = new Date(runningDrink.started_at);
+      if (at < runningDrinkStart) {
+        throw INVALID_TIME_ORDER();
+      }
       db.prepare('UPDATE drinks SET finished_at = ? WHERE id = ?').run(formatISOUTC(at), runningDrink.id);
     }
     
