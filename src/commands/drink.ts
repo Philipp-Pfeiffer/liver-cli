@@ -75,6 +75,10 @@ export function addDrink(
       ).get() as { id: number } | undefined;
       
       if (activeSession) {
+        const activeSessionStart = new Date(activeSession.started_at);
+        if (at < activeSessionStart) {
+          throw INVALID_TIME_ORDER();
+        }
         db.prepare('UPDATE sessions SET ended_at = ? WHERE id = ?').run(
           formatISOUTC(at),
           activeSession.id,
@@ -115,7 +119,7 @@ export function addDrink(
   
   const finishedAt = new Date(at.getTime() + durationMinutes * 60000);
   
-  let result: Database.RunResult;
+  let result: Database.RunResult | undefined;
   db.transaction(() => {
     result = db.prepare(
       'INSERT INTO drinks (session_id, started_at, finished_at, volume_ml, abv, preset_name) VALUES (?, ?, ?, ?, ?, ?)'
@@ -128,6 +132,10 @@ export function addDrink(
       options.presetName ?? null,
     );
   }).immediate();
+  
+  if (!result) {
+    throw new Error('Failed to insert drink');
+  }
   
   const bacAfter = computeBACAfter(db, session.id, at);
   
@@ -182,7 +190,7 @@ export function startDrink(
   
   const finishedAt = durationMinutes > 0 ? new Date(at.getTime() + durationMinutes * 60000) : null;
   
-  let result: Database.RunResult;
+  let result: Database.RunResult | undefined;
   
   db.transaction(() => {
     if (runningDrink && options.force) {
@@ -201,10 +209,14 @@ export function startDrink(
     );
   }).immediate();
   
+  if (!result) {
+    throw new Error('Failed to insert drink');
+  }
+  
   const bacAfter = computeBACAfter(db, session.id, at);
 
   return {
-    drink_id: result!.lastInsertRowid as number,
+    drink_id: result.lastInsertRowid as number,
     session_id: session.id,
     started_at: formatISOUTC(at),
     volume_ml: options.volumeMl,

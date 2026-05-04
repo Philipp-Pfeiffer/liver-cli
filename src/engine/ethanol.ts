@@ -131,7 +131,7 @@ export function generateCurve(
 ): CurveResult {
   const points = [];
   for (let offset = fromOffsetMinutes; offset <= toOffsetMinutes; offset += stepMinutes) {
-    const bacPercent = calculateBAC(profile, drinks, formula, 0);
+    const bacPercent = calculateBAC(profile, drinks, formula, offset);
     points.push({ offsetMinutes: offset, bacPercent });
   }
   return { points };

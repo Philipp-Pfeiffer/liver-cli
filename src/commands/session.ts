@@ -148,7 +148,14 @@ export function listSessions(
   
   if (options.month) {
     // Parse YYYY-MM and compute UTC range for Berlin timezone
-    const [year, month] = options.month.split('-').map(Number);
+    const parts = options.month.split('-');
+    if (parts.length !== 2 || parts.some(p => !/^\d+$/.test(p))) {
+      throw new Error(`Invalid month format: ${options.month}. Expected YYYY-MM.`);
+    }
+    const [year, month] = parts.map(Number);
+    if (month < 1 || month > 12) {
+      throw new Error(`Invalid month: ${month}. Must be between 1 and 12.`);
+    }
     const berlinStart = new Date(Date.UTC(year!, month! - 1, 1, 0, 0, 0));
     const berlinEnd = new Date(Date.UTC(year!, month!, 1, 0, 0, 0));
     // Berlin is UTC+1 or UTC+2, so we need to adjust
@@ -214,7 +221,7 @@ export function resolveStomachStateAt(
   const event = db.prepare(
     `SELECT state FROM stomach_events
      WHERE session_id = ? AND at <= ?
-     ORDER BY at DESC, rowid DESC
+     ORDER BY at DESC, id DESC
      LIMIT 1`
   ).get(sessionId, formatISOUTC(at)) as { state: string } | undefined;
   

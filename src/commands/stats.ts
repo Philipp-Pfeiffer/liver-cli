@@ -145,7 +145,7 @@ function generateSessionCurve(
   for (let offset = 0; offset <= totalMinutes; offset += stepMinutes) {
     const pointTime = new Date(from.getTime() + offset * 60000);
     const engineDrinks = drinksToEngine(db, drinks, pointTime);
-    const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, -offset);
+    const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
     const bacPromille = bacPercent * 10;
     curvePoints.push(Math.round(bacPromille * 100) / 100);
   }
@@ -190,9 +190,16 @@ export function getStats(
     to = now;
     mode = 'all';
   } else if (options.month) {
-    const [yearStr, monthStr] = options.month.split('-');
+    const parts = options.month.split('-');
+    if (parts.length !== 2 || parts.some(p => !/^\d+$/.test(p))) {
+      throw new Error(`Invalid month format: ${options.month}. Expected YYYY-MM.`);
+    }
+    const [yearStr, monthStr] = parts;
     const year = parseInt(yearStr!, 10);
     const month = parseInt(monthStr!, 10);
+    if (month < 1 || month > 12) {
+      throw new Error(`Invalid month: ${month}. Must be between 1 and 12.`);
+    }
     from = berlinTimeToUTC(year, month, 1, 0, 0, 0);
     const lastDay = new Date(year, month, 0).getDate();
     to = berlinTimeToUTC(year, month, lastDay, 23, 59, 59);
@@ -245,7 +252,7 @@ export function getStats(
      GROUP BY COALESCE(preset_name, 'unknown')`
   ).all(fromStr, toStr) as PresetStats[];
 
-  const allDrinks = db.prepare('SELECT started_at FROM drinks ORDER BY started_at').all() as Array<{ started_at: string }>;
+  const allDrinks = db.prepare('SELECT started_at FROM drinks WHERE started_at >= ? AND started_at <= ? ORDER BY started_at').all(fromStr, toStr) as Array<{ started_at: string }>;
   const allDrinkingDays = [...new Set(allDrinks.map(d => getBerlinDateFromUTC(new Date(d.started_at))))].sort();
 
   let longestDryStreak = 0;
