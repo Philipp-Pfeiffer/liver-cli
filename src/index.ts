@@ -8,7 +8,8 @@ import { getStatus, getBACAt, getSober, getCurve } from './commands/compute.js';
 import { getStats } from './commands/stats.js';
 import { getConfig, setConfig, listConfig } from './config/index.js';
 import { performAutoClose } from './commands/auto-close.js';
-import { configureOutput, outputSuccess, outputError, logVerbose } from './output/index.js';
+import { configureOutput, outputSuccess, outputError, outputSVG, logVerbose } from './output/index.js';
+import type { SVGCurveData } from './output/svg.js';
 import { parseTimestamp, nowUTC } from './time/index.js';
 import { LiverError, PROFILE_MISSING, SESSION_NOT_ACTIVE, INVALID_VOLUME, INVALID_ABV, DB_LOCKED, DATABASE_CORRUPTED } from './errors/index.js';
 import type { OutputOptions } from './output/index.js';
@@ -52,6 +53,11 @@ function handleCommand(fn: () => Record<string, unknown> | void, cmd: Command, t
     }
 
     const result = fn();
+
+    if (result === null) {
+      db.close();
+      process.exit(0);
+    }
 
     const output: Record<string, unknown> = result ?? { ok: true };
     if (closedSession) {
@@ -457,6 +463,7 @@ program
   .option('--from <T>', 'Start time')
   .option('--to <T>', 'End time')
   .option('--step <minutes>', 'Step size in minutes', parseInt)
+  .option('--export <format>', 'Export format (svg)')
   .action((options, cmd) => {
     handleCommand(() => {
       const db = initDb();
@@ -469,6 +476,12 @@ program
         formula: getFormula(cmd),
       });
       db.close();
+      
+      if (options.export === 'svg') {
+        outputSVG(result as unknown as SVGCurveData, getOutputOptions(cmd));
+        return null;
+      }
+      
       return result;
     }, cmd);
   });

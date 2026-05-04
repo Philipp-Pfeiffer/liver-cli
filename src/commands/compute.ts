@@ -238,11 +238,22 @@ export function getCurve(
   }
 
   const engineProfile = profileToEngine(profile);
-  const drinks = db.prepare(
+
+  const drinksRaw = db.prepare(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
   const sweetSpot = getSweetSpotDefaults();
+
+  // Build drink markers for SVG
+  const drinkMarkers = drinksRaw.map(d => ({
+    at: d.started_at,
+    label: d.preset_name || `${d.volume_ml}ml`,
+    volume_ml: d.volume_ml,
+    abv: d.abv,
+  }));
+
+  const drinks = drinksRaw;
 
   const curvePoints = [];
   for (let offset = 0; offset <= totalMinutes; offset += stepMinutes) {
@@ -260,6 +271,7 @@ export function getCurve(
 
   return {
     curve: curvePoints,
+    drinks: drinkMarkers,
     meta: {
       from: formatISOLocal(from),
       to: formatISOLocal(to),

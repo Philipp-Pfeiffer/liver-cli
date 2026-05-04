@@ -85,3 +85,5 @@ export function formatTable(headers: string[], rows: string[][]): string {
 
   return lines.join('\n');
 }
+
+export { outputSVG, type SVGCurveData } from './svg.js';
