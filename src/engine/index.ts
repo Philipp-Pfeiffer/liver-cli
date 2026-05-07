@@ -10,6 +10,10 @@ import {
   minutesUntilSober as ethanolMinutesUntilSober,
   generateCurve as ethanolGenerateCurve,
 } from './ethanol.js';
+import {
+  getTrajectory as wasmGetTrajectory,
+  getAbsorbingDrinkCount as wasmGetAbsorbingDrinkCount,
+} from './wasm-loader.js';
 import { initWasm } from './wasm-loader.js';
 
 initWasm();
@@ -53,4 +57,16 @@ export function resolveFormula(
   overrideFormula: BACFormula | undefined,
 ): BACFormula {
   return overrideFormula ?? profileFormula ?? 'watson';
+}
+
+export function getTrajectory(
+  profile: ProfileParams,
+  drinks: DrinkInput[],
+  formula: BACFormula,
+): string {
+  return wasmGetTrajectory(profile, drinks, formula);
+}
+
+export function getAbsorbingDrinkCount(drinks: DrinkInput[]): number {
+  return wasmGetAbsorbingDrinkCount(drinks);
 }

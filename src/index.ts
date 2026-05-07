@@ -7,7 +7,7 @@ initWasm();
 import { setProfile, getProfile } from './commands/profile.js';
 import { setPreset, listPresets, getPreset, removePreset } from './commands/preset.js';
 import { startSession, endSession, listSessions, getSession, setStomachState, getActiveSession, renameSession } from './commands/session.js';
-import { addDrink, startDrink, stopDrink, listDrinks, removeDrink } from './commands/drink.js';
+import { addDrink, startDrink, stopDrink, updateDrink, listDrinks, removeDrink } from './commands/drink.js';
 import { getStatus, getBACAt, getSober, getCurve } from './commands/compute.js';
 import { getStats } from './commands/stats.js';
 import { getConfig, setConfig, listConfig } from './config/index.js';
@@ -429,6 +429,26 @@ drinkCmd
     handleCommand(() => {
       const db = initDb();
       const result = removeDrink(db, parseInt(id, 10));
+      db.close();
+      return result;
+    }, cmd);
+  });
+
+drinkCmd
+  .command('update')
+  .description('Update a drink')
+  .requiredOption('--id <id>', 'Drink ID', parseInt)
+  .option('--duration <Xm|Xh>', 'Duration')
+  .option('--finished-at <T>', 'Finished at')
+  .action((options, cmd) => {
+    handleCommand(() => {
+      const db = initDb();
+      const finishedAt = options.finishedAt ? parseTimestamp(options.finishedAt) : undefined;
+      const result = updateDrink(db, {
+        id: options.id,
+        duration: options.duration,
+        finishedAt,
+      });
       db.close();
       return result;
     }, cmd);

@@ -114,6 +114,18 @@ export const SESSION_NOT_ACTIVE = () =>
 export const DRINK_ALREADY_RUNNING = () =>
   new LiverError('DRINK_ALREADY_RUNNING', 'A drink is already running. Stop it first or use --force.', EXIT_CODES.STATE_ERROR);
 
+export const E_DRINK_ALREADY_OPEN = (drinkId: number, elapsedMin: number) =>
+  new LiverError(
+    'E_DRINK_ALREADY_OPEN',
+    `Drink #${drinkId} is already open (running for ${elapsedMin} min). Use 'liver stop' or '--force' to override.`,
+    EXIT_CODES.STATE_ERROR,
+    `liver stop  # or: liver start --volume ... --force`,
+    { drinkId, elapsedMin },
+  );
+
+export const E_NO_OPEN_DRINK = () =>
+  new LiverError('E_NO_OPEN_DRINK', 'No drink is currently open. Start one with `liver start`.', EXIT_CODES.STATE_ERROR);
+
 export const NO_DRINK_TO_STOP = () =>
   new LiverError('NO_DRINK_TO_STOP', 'No drink is currently running.', EXIT_CODES.STATE_ERROR);
 

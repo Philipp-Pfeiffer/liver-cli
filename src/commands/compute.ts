@@ -1,14 +1,14 @@
 import type Database from 'better-sqlite3';
 import type { ProfileParams, DrinkInput, BACFormula } from '../engine/types.js';
-import { calculateBACAtOffset, getMinutesUntilSober, resolveFormula } from '../engine/index.js';
+import { calculateBACAtOffset, getMinutesUntilSober, resolveFormula, getTrajectory, getAbsorbingDrinkCount } from '../engine/index.js';
 import { requireProfile } from './profile.js';
 import { requireActiveSession, getActiveSession, resolveStomachStateAt } from './session.js';
-import { getSweetSpotDefaults } from '../config/index.js';
+import { getSweetSpotDefaults, getConfig } from '../config/index.js';
 import { formatISOUTC, formatISOLocal, nowUTC } from '../time/index.js';
 import { CURVE_TOO_LARGE, SESSION_NOT_ACTIVE } from '../errors/index.js';
 import type { DrinkData } from './drink.js';
 
-function profileToEngine(profile: { weight_kg: number; height_cm: number; sex: string; age: number }): ProfileParams {
+export function profileToEngine(profile: { weight_kg: number; height_cm: number; sex: string; age: number }): ProfileParams {
   return {
     weightKg: profile.weight_kg,
     heightCm: profile.height_cm,
@@ -17,7 +17,7 @@ function profileToEngine(profile: { weight_kg: number; height_cm: number; sex: s
   };
 }
 
-function drinksToEngine(
+export function drinksToEngine(
   db: Database.Database,
   drinks: DrinkData[],
   referenceTime: Date,
@@ -82,15 +82,57 @@ export function getStatus(
   const minutesUntil = getMinutesUntilSober(engineProfile, engineDrinks, formula);
   const soberAt = new Date(now.getTime() + minutesUntil * 60000);
 
-  const sweetSpot = getSweetSpotDefaults();
+  const sweetSpot = getSweetSpotDefaults(db);
   const zone = getZone(bacPromille, sweetSpot.min, sweetSpot.max);
 
-  const bacFuture = calculateBACAtOffset(engineProfile, engineDrinks, formula, -5);
-  const trajectory = bacFuture > bacPercent ? 'rising' : 'falling';
+  const trajectoryRaw = getTrajectory(engineProfile, engineDrinks, formula);
+  const trajectory = trajectoryRaw as 'rising' | 'falling' | 'stable';
 
-  const absorbingDrinks = drinks.filter(d => !d.finished_at).length;
+  const absorbingDrinks = getAbsorbingDrinkCount(engineDrinks);
 
-  return {
+  // Auto-close detection
+  const autoCloseGraceMin = (getConfig('auto_close_grace_minutes', db) as number | undefined) ?? 15;
+  const autoClosedDrinks: Array<{ drink_id: number; finished_at: string; source: string }> = [];
+  const openDrinks: Array<{ drink_id: number; started_at: string; elapsed_minutes: number; drink_in_progress: true }> = [];
+
+  for (const drink of drinks) {
+    if (!drink.finished_at) {
+      // Open drink (no finished_at set - should not happen with new schema)
+      const elapsedMin = Math.round((now.getTime() - new Date(drink.started_at).getTime()) / 60000);
+      openDrinks.push({
+        drink_id: drink.id,
+        started_at: drink.started_at,
+        elapsed_minutes: elapsedMin,
+        drink_in_progress: true,
+      });
+    } else {
+      const finishedAt = new Date(drink.finished_at);
+      const graceEnd = new Date(finishedAt.getTime() + autoCloseGraceMin * 60000);
+
+      if (now > graceEnd) {
+        // Drink is past grace period - treat as auto-closed
+        autoClosedDrinks.push({
+          drink_id: drink.id,
+          finished_at: drink.finished_at,
+          source: 'auto_close_grace',
+        });
+      } else if (now >= finishedAt) {
+        // Drink is finished but within grace
+        // Not listed as open or auto-closed
+      } else {
+        // Drink is still in progress (finished_at in future)
+        const elapsedMin = Math.round((now.getTime() - new Date(drink.started_at).getTime()) / 60000);
+        openDrinks.push({
+          drink_id: drink.id,
+          started_at: drink.started_at,
+          elapsed_minutes: elapsedMin,
+          drink_in_progress: true,
+        });
+      }
+    }
+  }
+
+  const response: Record<string, unknown> = {
     now: formatISOLocal(now),
     session_id: session.id,
     session_name: session.name,
@@ -105,6 +147,16 @@ export function getStatus(
     stomach_state_now: resolveStomachStateAt(db, session.id, now),
     disclaimer: 'estimate, not legally/medically valid',
   };
+
+  if (openDrinks.length > 0) {
+    response.open_drinks = openDrinks;
+  }
+
+  if (autoClosedDrinks.length > 0) {
+    response.auto_closed_drinks = autoClosedDrinks;
+  }
+
+  return response;
 }
 
 export function getBACAt(
@@ -140,7 +192,7 @@ export function getBACAt(
   const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
   const bacPromille = bacPercent * 10;
 
-  const sweetSpot = getSweetSpotDefaults();
+  const sweetSpot = getSweetSpotDefaults(db);
   const zone = getZone(bacPromille, sweetSpot.min, sweetSpot.max);
 
   return {
@@ -243,7 +295,7 @@ export function getCurve(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
-  const sweetSpot = getSweetSpotDefaults();
+  const sweetSpot = getSweetSpotDefaults(db);
 
   // Build drink markers for SVG
   const drinkMarkers = drinksRaw.map(d => ({
@@ -282,5 +334,3 @@ export function getCurve(
     disclaimer: 'estimate, not legally/medically valid',
   };
 }
-
-export { profileToEngine, drinksToEngine };

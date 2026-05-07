@@ -139,7 +139,7 @@ function generateSessionCurve(
 
   const stepMinutes = 5;
   const totalMinutes = Math.ceil(durationMs / (1000 * 60));
-  const sweetSpot = getSweetSpotDefaults();
+  const sweetSpot = getSweetSpotDefaults(db);
 
   const curvePoints: number[] = [];
   for (let offset = 0; offset <= totalMinutes; offset += stepMinutes) {

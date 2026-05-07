@@ -7,24 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Phase 3: Active Drink Features** — Volume-Duration-Tabelle, Single-Open-Drink-Rule, `liver drink update`, Peak-Time via Curve-Sampling
+- `src/lib/duration.ts` — `VOLUME_DURATION_TABLE` mit 7 Buckets (Shot→Maß+) und `resolveDefaultDuration(volumeMl, config)`
+- `src/engine/peak.ts` — `projectedPeakFromCurve()` nutzt `generateCurve` mit 60s-Schritten für numerische Peak-Suche
+- `src/commands/drink.ts` — neuer `updateDrink()` Command: `liver drink update --id <ID> [--duration <D>] [--finished-at <T>]`
+- Neue Response-Felder in `add`/`start`/`stop`:
+  - `bac_before_promille` — BAC vor dem neuen Drink
+  - `bac_projected_peak_promille` — projizierter Peak-BAC
+  - `bac_projected_peak_at` — ISO-Timestamp des Peaks
+  - `bac_at_stop_promille` — BAC zum Stop-Zeitpunkt (nur `stop`)
+  - `drink_in_progress` — boolean Open-State
+  - `projection_basis` — `"planned_duration"` | `"volume_default"` | `"finalized"`
+  - `default_duration_source` — `"config_override"` | `"volume_table"` | `"fallback_20min"`
+  - `absorbing_drinks` — Anzahl Drinks in Resorption (via ethanol-rs)
+  - `trajectory` — `"rising"` | `"falling"` | `"stable"` (via ethanol-rs)
+- **Single-Open-Drink-Rule** — Zweites `start` ohne `stop` wirft `E_DRINK_ALREADY_OPEN`. Mit `--force` wird alter Drink force-closed.
+- **Auto-Close-Detection** — `status` listet Drinks als `auto_closed_drinks`, wenn `now > finished_at + grace` (default 15min, config-überschreibbar)
+- Config-Keys: `default_duration_minutes`, `auto_close_grace_minutes`, `[duration_table]` TOML-Section
+- `MIGRATION-v0.2.0.md` — Mapping-Tabelle alt → neue Felder
+- Tests: `tests/unit/duration.test.ts`, `tests/unit/peak.test.ts`, `tests/unit/auto-close.test.ts`, `tests/unit/single-open-drink.test.ts`, `tests/unit/drink-update.test.ts`, `tests/acceptance/active-drink.test.ts` (D1–D10)
+
 ### Changed
 - **Engine — Migration zu ethanol-rs (WASM)** — TS-Engine durch ethanol-rs WASM ersetzt. First-Order-Kinetics (ka-Modell) statt linearer Absorption. Peak-Timing physiologisch korrekt (T+15-45min). Bioavailability asymptotisch 100%.
 - Vendoring: ethanol-rs @ `0818749` als git submodule, WASM-Build committed in `vendor/ethanol-rs/pkg/`
 - Build-Toolchain: `wasm-pack@0.13.1`, Rust target `wasm32-unknown-unknown`
-
-### Added
-- Suite B acceptance-band tests (21 tests across 8 modules) per Spec v1.2.0 §1.6 — validates ethanol-rs engine against peer-reviewed pharmacokinetic literature
-- `pnpm test:bands` — dedicated test script for pharmacokinetic validation suite
-- `src/engine/wasm-loader.ts` — Sync WASM-Adapter mit `initWasm()` Boot-Hook
-- `tests/unit/wasm-bridge.test.ts` — 5 Anti-Stub-Smoke-Tests (Watson≠Widmark, Peak nach t=0, Superposition, Stomach-State, Absorbing-Count)
-- `vendor:build` / `vendor:check` npm scripts
+- `startDrink` ohne `--duration` nutzt jetzt volume-basierte Default-Duration statt `finished_at = NULL`
+- `bac_after_promille` ist deprecated (Alias für `bac_projected_peak_promille`), entfernt in v0.3.0
 
 ### Fixed
 - `src/commands/stats.ts` — `generateSessionCurve` nutzte `-offset` statt `0`, was alle Curve-Punkte auf T0 referenzierte. Jetzt korrekte zeitliche Variabilität.
+- BAC-drop during active absorption (Bug Session 6) — durch volume-basierte Duration + Peak-Projection gefixt
 
 ### Engineering
 - `STOMACH_MAP`, `SEX_MAP`, `KA_BY_STOMACH` in `src/engine/types.ts`
 - `initWasm()` wird in `src/engine/index.ts` beim Import aufgerufen
+- Config-Helper (`getConfig`, `setConfig`, `getSweetSpotDefaults`) akzeptieren optional `db`-Parameter für Transaktions-Sicherheit
 
 ## [0.1.2] - 2026-05-03
 
