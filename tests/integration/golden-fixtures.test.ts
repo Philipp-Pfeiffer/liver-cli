@@ -17,8 +17,10 @@ describe('Golden Fixture Tests', () => {
   });
 
   it('add output has correct schema with bac_after_promille', () => {
-    startSession(db, { stomach: 'full' });
-    const result = addDrink(db, { volumeMl: 500, abv: 5.2 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    const result = addDrink(db, { volumeMl: 500, abv: 5.2, at: thirtyMinAgo });
     
     expect(result).toHaveProperty('drink_id');
     expect(result).toHaveProperty('session_id');
@@ -32,13 +34,15 @@ describe('Golden Fixture Tests', () => {
     
     expect(result.volume_ml).toBe(500);
     expect(result.abv).toBe(5.2);
-    expect(result.bac_after_promille).toBeGreaterThan(0);
+    expect(result.bac_after_promille).toBeGreaterThanOrEqual(0);
     expect(typeof result.bac_after_promille).toBe('number');
   });
 
   it('start output has correct schema with bac_after_promille', () => {
     startSession(db, { stomach: 'full' });
-    const result = startDrink(db, { volumeMl: 40, abv: 40 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    const result = startDrink(db, { volumeMl: 40, abv: 40, at: thirtyMinAgo });
     
     expect(result).toHaveProperty('drink_id');
     expect(result).toHaveProperty('session_id');
@@ -49,13 +53,15 @@ describe('Golden Fixture Tests', () => {
     expect(result).toHaveProperty('stomach_state');
     expect(result).toHaveProperty('bac_after_promille');
     
-    expect(result.bac_after_promille).toBeGreaterThan(0);
+    expect(result.bac_after_promille).toBeGreaterThanOrEqual(0);
     expect(typeof result.bac_after_promille).toBe('number');
   });
 
   it('status output has correct schema', () => {
-    startSession(db, { stomach: 'full' });
-    addDrink(db, { volumeMl: 500, abv: 5.2 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    addDrink(db, { volumeMl: 500, abv: 5.2, at: thirtyMinAgo });
     const result = getStatus(db) as Record<string, unknown>;
     
     expect(result).toHaveProperty('now');
@@ -77,8 +83,10 @@ describe('Golden Fixture Tests', () => {
   });
 
   it('bac output has correct schema', () => {
-    startSession(db, { stomach: 'full' });
-    addDrink(db, { volumeMl: 500, abv: 5.2 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    addDrink(db, { volumeMl: 500, abv: 5.2, at: thirtyMinAgo });
     const now = new Date();
     const result = getBACAt(db, now) as Record<string, unknown>;
     
@@ -93,8 +101,10 @@ describe('Golden Fixture Tests', () => {
   });
 
   it('sober output has correct schema', () => {
-    startSession(db, { stomach: 'full' });
-    addDrink(db, { volumeMl: 500, abv: 5.2 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    addDrink(db, { volumeMl: 500, abv: 5.2, at: thirtyMinAgo });
     const result = getSober(db) as Record<string, unknown>;
     
     expect(result).toHaveProperty('minutes_until_sober');

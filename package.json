@@ -23,8 +23,11 @@
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
     "test": "vitest run",
+    "test:bands": "vitest run tests/bands",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build \u0026\u0026 npm test",
+    "vendor:build": "cd vendor/ethanol-rs/crates/ethanol-rs-wasm \u0026\u0026 wasm-pack build --target nodejs --release --out-dir pkg \u0026\u0026 cp -r pkg/* ../../ethanol-rs-pkg/",
+    "vendor:check": "node -e \"require('./vendor/ethanol-rs-pkg/ethanol_rs_wasm.js')\""
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",

@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import type { ProfileParams, DrinkInput, BACFormula } from '../engine/types.js';
-import { calculateBACAtOffset, getMinutesUntilSober, getCurve, resolveFormula } from '../engine/index.js';
+import { calculateBACAtOffset, getMinutesUntilSober, resolveFormula } from '../engine/index.js';
 import { requireProfile } from './profile.js';
 import { requireActiveSession, getActiveSession, resolveStomachStateAt } from './session.js';
 import { getSweetSpotDefaults } from '../config/index.js';

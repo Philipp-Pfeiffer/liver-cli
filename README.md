@@ -180,6 +180,13 @@ liver curve --from "2026-05-03T14:00" --to "2026-05-03T22:00" --step 15m --expor
 liver add bier --at "yesterday 21:00" --session new --name "Yesterday"
 ```
 
+## Testing
+
+```bash
+pnpm test          # all tests
+pnpm test:bands    # Suite B — validates engine against peer-reviewed pharmacokinetic literature (Spec §1.6)
+```
+
 ## Disclaimer
 
 All BAC calculations are estimates and not legally or medically valid. Use responsibly.
