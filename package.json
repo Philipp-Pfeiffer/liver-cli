@@ -13,7 +13,10 @@
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm test",
+    "vendor:build": "cd vendor/ethanol-rs/crates/ethanol-rs-wasm && wasm-pack build --target nodejs --release --out-dir pkg && cp -r pkg/* ../../ethanol-rs-pkg/",
+    "vendor:check": "node -e \"require('./vendor/ethanol-rs-pkg/ethanol_rs_wasm.js')\""
   },
   "engines": {
     "node": ">=22.0.0"

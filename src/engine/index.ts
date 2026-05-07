@@ -10,6 +10,9 @@ import {
   minutesUntilSober as ethanolMinutesUntilSober,
   generateCurve as ethanolGenerateCurve,
 } from './ethanol.js';
+import { initWasm } from './wasm-loader.js';
+
+initWasm();
 
 export function calculateBACAtOffset(
   profile: ProfileParams,

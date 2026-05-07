@@ -19,13 +19,15 @@ describe('Sex Differentiation Test', () => {
     const dbFemale = createDbWithProfile('f');
     const dbOther = createDbWithProfile('o');
 
-    startSession(dbMale, { stomach: 'full' });
-    startSession(dbFemale, { stomach: 'full' });
-    startSession(dbOther, { stomach: 'full' });
+    // Create drinks 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(dbMale, { stomach: 'full', at: thirtyMinAgo });
+    startSession(dbFemale, { stomach: 'full', at: thirtyMinAgo });
+    startSession(dbOther, { stomach: 'full', at: thirtyMinAgo });
 
-    addDrink(dbMale, { volumeMl: 500, abv: 5.0 });
-    addDrink(dbFemale, { volumeMl: 500, abv: 5.0 });
-    addDrink(dbOther, { volumeMl: 500, abv: 5.0 });
+    addDrink(dbMale, { volumeMl: 500, abv: 5.0, at: thirtyMinAgo });
+    addDrink(dbFemale, { volumeMl: 500, abv: 5.0, at: thirtyMinAgo });
+    addDrink(dbOther, { volumeMl: 500, abv: 5.0, at: thirtyMinAgo });
 
     const statusMale = getStatus(dbMale) as { bac_promille: number };
     const statusFemale = getStatus(dbFemale) as { bac_promille: number };

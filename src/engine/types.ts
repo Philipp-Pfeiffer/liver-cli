@@ -32,3 +32,25 @@ export interface CurvePoint {
 export interface CurveResult {
   points: CurvePoint[];
 }
+
+// Mapping constants for ethanol-rs WASM bridge
+
+export const STOMACH_MAP = {
+  empty: 'empty',
+  some: 'some_food',
+  full: 'full',
+} as const;
+
+export const SEX_MAP = {
+  male: 'male',
+  female: 'female',
+  other: 'other',
+} as const;
+
+// ka in h^-1, aus Wilkinson 1977 (siehe Spec §X.12)
+// TODO Phase 4: replace mit Bands aus Spec v1.2.0 §1.6 once published
+export const KA_BY_STOMACH = {
+  empty: 4.0,
+  some: 2.5,
+  full: 1.5,
+} as const;

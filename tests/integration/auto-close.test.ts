@@ -27,14 +27,15 @@ describe('Auto-Close Integration Test', () => {
     vi.useFakeTimers();
     vi.setSystemTime(baseTime);
 
-    startSession(db, { stomach: 'full' });
-    addDrink(db, { volumeMl: 40, abv: 40 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(baseTime.getTime() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    addDrink(db, { volumeMl: 40, abv: 40, at: thirtyMinAgo });
     
     // Session should still be active immediately after drink
     expect(getActiveSession(db)).not.toBeNull();
     
-    // Advance time by 12 hours - should be past sober time for a small drink
-    // (elimination rate 0.015‰/h ≈ 10h for this drink)
+    // Advance time by 12 hours - should be past sober time
     const futureTime = new Date(baseTime.getTime() + 12 * 60 * 60 * 1000);
     vi.setSystemTime(futureTime);
     
@@ -59,8 +60,10 @@ describe('Auto-Close Integration Test', () => {
     vi.useFakeTimers();
     vi.setSystemTime(baseTime);
 
-    startSession(db, { stomach: 'full' });
-    addDrink(db, { volumeMl: 500, abv: 5.2 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(baseTime.getTime() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    addDrink(db, { volumeMl: 500, abv: 5.2, at: thirtyMinAgo });
     
     // Immediately after drink, should NOT auto-close
     const closedSessionId = performAutoClose(db);

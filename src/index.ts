@@ -1,5 +1,9 @@
 import { Command } from 'commander';
+import { initWasm } from './engine/wasm-loader.js';
 import { initDb, Database } from './db/index.js';
+
+// Initialize WASM module at process start
+initWasm();
 import { setProfile, getProfile } from './commands/profile.js';
 import { setPreset, listPresets, getPreset, removePreset } from './commands/preset.js';
 import { startSession, endSession, listSessions, getSession, setStomachState, getActiveSession, renameSession } from './commands/session.js';

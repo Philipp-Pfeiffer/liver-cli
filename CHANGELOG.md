@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Engine — Migration zu ethanol-rs (WASM)** — TS-Engine durch ethanol-rs WASM ersetzt. First-Order-Kinetics (ka-Modell) statt linearer Absorption. Peak-Timing physiologisch korrekt (T+15-45min). Bioavailability asymptotisch 100%.
+- Vendoring: ethanol-rs @ `0818749` als git submodule, WASM-Build committed in `vendor/ethanol-rs/pkg/`
+- Build-Toolchain: `wasm-pack@0.13.1`, Rust target `wasm32-unknown-unknown`
+
+### Added
+- `src/engine/wasm-loader.ts` — Sync WASM-Adapter mit `initWasm()` Boot-Hook
+- `tests/unit/wasm-bridge.test.ts` — 5 Anti-Stub-Smoke-Tests (Watson≠Widmark, Peak nach t=0, Superposition, Stomach-State, Absorbing-Count)
+- `vendor:build` / `vendor:check` npm scripts
+
+### Fixed
+- `src/commands/stats.ts` — `generateSessionCurve` nutzte `-offset` statt `0`, was alle Curve-Punkte auf T0 referenzierte. Jetzt korrekte zeitliche Variabilität.
+
+### Engineering
+- `STOMACH_MAP`, `SEX_MAP`, `KA_BY_STOMACH` in `src/engine/types.ts`
+- `initWasm()` wird in `src/engine/index.ts` beim Import aufgerufen
+
 ## [0.1.2] - 2026-05-03
 
 ### Fixed

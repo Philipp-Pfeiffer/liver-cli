@@ -13,11 +13,13 @@ describe('computation commands', () => {
     db = new Database(':memory:');
     migrate(db);
     setProfile(db, 78, 184, 'm', 22);
-    startSession(db, { stomach: 'full' });
   });
 
   it('should calculate status after drink', () => {
-    addDrink(db, { volumeMl: 500, abv: 5.2 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    addDrink(db, { volumeMl: 500, abv: 5.2, at: thirtyMinAgo });
     const status = getStatus(db);
 
     expect(status.bac_promille).toBeGreaterThan(0);
@@ -27,10 +29,12 @@ describe('computation commands', () => {
   });
 
   it('should calculate BAC at specific time', () => {
-    addDrink(db, { volumeMl: 500, abv: 5.2 });
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    addDrink(db, { volumeMl: 500, abv: 5.2, at: thirtyMinAgo });
     const now = new Date();
-    // Ensure 'now' is after the drink was added
-    const result = getBACAt(db, new Date(now.getTime() + 1000));
+    // Query 30min in the future so ka-model has absorbed alcohol
+    const result = getBACAt(db, new Date(now.getTime() + 30 * 60000));
 
     expect(result.bac_promille).toBeGreaterThan(0);
     expect(result.zone).toBeDefined();
@@ -38,7 +42,10 @@ describe('computation commands', () => {
   });
 
   it('should calculate sober time', () => {
-    addDrink(db, { volumeMl: 500, abv: 5.2 });
+    // Create drink 30min ago so ka-model has time to absorb
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'full', at: thirtyMinAgo });
+    addDrink(db, { volumeMl: 500, abv: 5.2, at: thirtyMinAgo });
     const result = getSober(db);
 
     expect(result.minutes_until_sober).toBeGreaterThan(0);

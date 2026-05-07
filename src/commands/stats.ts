@@ -145,7 +145,7 @@ function generateSessionCurve(
   for (let offset = 0; offset <= totalMinutes; offset += stepMinutes) {
     const pointTime = new Date(from.getTime() + offset * 60000);
     const engineDrinks = drinksToEngine(db, drinks, pointTime);
-    const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, -offset);
+    const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
     const bacPromille = bacPercent * 10;
     curvePoints.push(Math.round(bacPromille * 100) / 100);
   }
