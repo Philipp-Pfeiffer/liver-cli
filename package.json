@@ -13,6 +13,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
     "test": "vitest run",
+    "test:bands": "vitest run tests/bands",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build && npm test",
     "vendor:build": "cd vendor/ethanol-rs/crates/ethanol-rs-wasm && wasm-pack build --target nodejs --release --out-dir pkg && cp -r pkg/* ../../ethanol-rs-pkg/",

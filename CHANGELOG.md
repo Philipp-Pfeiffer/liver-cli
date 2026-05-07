@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build-Toolchain: `wasm-pack@0.13.1`, Rust target `wasm32-unknown-unknown`
 
 ### Added
+- Suite B acceptance-band tests (21 tests across 8 modules) per Spec v1.2.0 §1.6 — validates ethanol-rs engine against peer-reviewed pharmacokinetic literature
+- `pnpm test:bands` — dedicated test script for pharmacokinetic validation suite
 - `src/engine/wasm-loader.ts` — Sync WASM-Adapter mit `initWasm()` Boot-Hook
 - `tests/unit/wasm-bridge.test.ts` — 5 Anti-Stub-Smoke-Tests (Watson≠Widmark, Peak nach t=0, Superposition, Stomach-State, Absorbing-Count)
 - `vendor:build` / `vendor:check` npm scripts
