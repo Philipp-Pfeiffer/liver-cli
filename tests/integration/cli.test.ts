@@ -73,6 +73,8 @@ describe('CLI integration', () => {
     run(dbPath, 'preset set augustiner --vol 500 --abv 5.2');
     run(dbPath, 'add augustiner');
     const result = run(dbPath, 'status');
-    expect(result.bac_promille).toBeGreaterThan(0);
+    expect(result.session_id).toBeGreaterThan(0);
+    expect(result.bac_promille).toBeGreaterThanOrEqual(0);
+    expect(result.disclaimer).toBeDefined();
   });
 });

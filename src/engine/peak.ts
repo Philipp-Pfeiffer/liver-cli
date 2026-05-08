@@ -33,5 +33,5 @@ export function projectedPeakFromCurve(
 	}
 
 	const peakTimestamp = new Date(now.getTime() + maxPoint.offsetMinutes * 60000);
-	return { timestamp: peakTimestamp, bac: maxPoint.bacPercent * 10 };
+	return { timestamp: peakTimestamp, bac: maxPoint.bacPercent };
 }

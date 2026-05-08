@@ -46,8 +46,7 @@ function computeBACBefore(
   ).all(sessionId) as DrinkData[];
 
   const engineDrinks = drinksToEngine(db, drinks, referenceTime);
-  const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
-  const bacPromille = bacPercent * 10;
+  const bacPromille = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
 
   return Math.round(bacPromille * 100) / 100;
 }
@@ -383,8 +382,8 @@ export function stopDrink(
   ).all(session.id) as DrinkData[];
 
   const engineDrinks = drinksToEngine(db, allDrinks, at);
-  const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
-  const bacAtStop = Math.round(bacPercent * 10 * 100) / 100;
+  const bacPromille = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
+  const bacAtStop = Math.round(bacPromille * 100) / 100;
 
   const trajectoryRaw = getTrajectory(engineProfile, engineDrinks, formula);
   const trajectory = trajectoryRaw as Trajectory;

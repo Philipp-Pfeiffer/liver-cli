@@ -1,6 +1,6 @@
 {
   "name": "liver-cli",
-  "version": "0.1.2",
+  "version": "0.2.0.1",
   "description": "BAC tracking CLI",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,6 +24,7 @@
     "lint:fix": "biome check . --write",
     "test": "vitest run",
     "test:bands": "vitest run tests/bands",
+    "test:plausibility": "vitest run tests/acceptance/plausibility.test.ts",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build \u0026\u0026 npm test",
     "vendor:build": "cd vendor/ethanol-rs/crates/ethanol-rs-wasm \u0026\u0026 wasm-pack build --target nodejs --release --out-dir pkg \u0026\u0026 cp -r pkg/* ../../ethanol-rs-pkg/",

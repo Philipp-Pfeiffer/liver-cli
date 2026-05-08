@@ -15,12 +15,13 @@ export function performAutoClose(db: Database.Database, referenceTime?: Date): n
 
   const lastDrink = db.prepare(
     'SELECT * FROM drinks WHERE session_id = ? AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1'
-  ).get(session.id) as { finished_at: string } | undefined;
+  ).get(session.id) as { finished_at: string; started_at: string } | undefined;
 
   if (!lastDrink) return null;
 
   const ref = referenceTime ?? new Date();
   const lastFinishedAt = new Date(lastDrink.finished_at);
+  const lastStartedAt = new Date(lastDrink.started_at);
 
   // SKIP auto-close if reference time is before last drink finished
   // (e.g., querying a future point within an active session)
@@ -37,6 +38,19 @@ export function performAutoClose(db: Database.Database, referenceTime?: Date): n
     return null;
   }
 
+  // Grace period: auto-close only after grace has passed.
+  // Grace starts at max(finished_at, started_at + AUTO_CLOSE_GRACE).
+  // This prevents immediate auto-close for instant drinks (no --duration).
+  const autoCloseGraceMin = 15;
+  const graceStart = new Date(Math.max(
+    lastFinishedAt.getTime(),
+    lastStartedAt.getTime() + autoCloseGraceMin * 60000,
+  ));
+
+  if (ref < graceStart) {
+    return null;
+  }
+
   const formula = (profile.preferred_formula ?? 'watson') as BACFormula;
   const engineProfile = profileToEngine(profile);
 
@@ -47,7 +61,7 @@ export function performAutoClose(db: Database.Database, referenceTime?: Date): n
   const engineDrinks = drinksToEngine(db, drinks, ref);
 
   const minutesUntil = getMinutesUntilSober(engineProfile, engineDrinks, formula);
-  const soberAt = new Date(lastFinishedAt.getTime() + minutesUntil * 60000);
+  const soberAt = new Date(ref.getTime() + minutesUntil * 60000);
 
   if (ref >= soberAt) {
     db.transaction(() => {
