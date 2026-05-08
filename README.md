@@ -1,5 +1,7 @@
 # liver — BAC Tracking CLI
 
+> ⚠️ **v0.2.0 has critical BAC calculation bugs.** Use **v0.2.0.1** or **v0.1.2** until resolved.
+
 A command-line tool for tracking Blood Alcohol Concentration (BAC) over time. Supports sessions, presets, statistics, and SVG export of BAC curves.
 
 ## Installation

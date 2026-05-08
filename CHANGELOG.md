@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0.1] - 2026-05-08
+
+### Fixed
+- **BAC Calculation — Factor-10 Overestimation** — `calculateBACAtOffset` already returned promille, but callers in `compute.ts`, `drink.ts`, `stats.ts`, and `peak.ts` multiplied by 10 again. Removed double multiplication. 500 ml × 2.5 % now peaks at ~0.12 ‰ instead of ~1.15 ‰.
+- **Timezone Consistency — `bac` vs `curve`** — `getBACAt` and `getCurve` now both use `nowUTC()` as reference for `drinksToEngine` and pass `offsetMinutes = (targetTime - now) / 60000` to `calculateBACAtOffset`. Both commands produce identical BAC values (±0.001 ‰) for the same wall-clock point.
+- **Auto-Close — Immediate Close after `add` without `--duration`** — `performAutoClose` now enforces a grace period starting at `max(finished_at, started_at + 15 min)`. Prevents sessions from closing immediately after a bolus drink because `minutesUntilSober` can be 0 before absorption begins.
+
+### Added
+- `tests/acceptance/plausibility.test.ts` — Suite C with hard acceptance bands for standard drinks (Bier 500 ml, Spirit 40 ml, Wein 200 ml, Colabier 500 ml, Big Beer 1000 ml). Catches factor-5+ BAC bugs.
+- `npm run test:plausibility` script and CI gate.
+
+## [0.2.0] - 2026-05-07
+
+> **KNOWN ISSUES (fixed in v0.2.0.1):**
+> - **Bug 1:** BAC values overestimated by factor ~5–10× due to double `* 10` conversion in `compute.ts`, `drink.ts`, `stats.ts`, `peak.ts`.
+> - **Bug 2:** `liver add` without `--duration` triggers immediate session auto-close because `finished_at = started_at` and `minutesUntilSober` is 0 before absorption starts.
+> - **Bug 3:** `liver bac --at` and `liver curve` use different time-reference logic, causing inconsistent BAC values for the same timestamp.
 
 ### Added
 - **Phase 3: Active Drink Features** — Volume-Duration-Tabelle, Single-Open-Drink-Rule, `liver drink update`, Peak-Time via Curve-Sampling
