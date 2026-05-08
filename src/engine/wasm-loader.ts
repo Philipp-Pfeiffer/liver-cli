@@ -18,7 +18,11 @@ let wasmModule: typeof import('../../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js') 
 
 export function initWasm(): void {
   if (!wasmModule) {
-    wasmModule = require('../../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js');
+    try {
+      wasmModule = require('../../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js');
+    } catch {
+      wasmModule = require('../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js');
+    }
   }
 }
 
