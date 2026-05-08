@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { migrate } from '../../src/db/migrate.js';
 import { setProfile } from '../../src/commands/profile.js';
@@ -8,10 +8,14 @@ import { getStatus } from '../../src/commands/compute.js';
 import { setConfig } from '../../src/config/index.js';
 import { LiverError } from '../../src/errors/index.js';
 
+// Defensive: reset fake timers if leaked from another test file in the same worker
+vi.useRealTimers();
+
 describe('Active Drink Acceptance Tests (D1-D10)', () => {
   let db: Database.Database;
 
   beforeEach(() => {
+    vi.useRealTimers();
     db = new Database(':memory:');
     migrate(db);
     setProfile(db, 78, 184, 'm', 22);
