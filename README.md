@@ -1,6 +1,6 @@
 # liver — BAC Tracking CLI
 
-> ⚠️ **v0.2.0 has critical BAC calculation bugs.** Use **v0.2.0.1** or **v0.1.2** until resolved.
+> ⚠️ **v0.2.0 has critical BAC calculation bugs.** Use **v0.2.1** or **v0.1.2** until resolved.
 
 A command-line tool for tracking Blood Alcohol Concentration (BAC) over time. Supports sessions, presets, statistics, and SVG export of BAC curves.
 
@@ -188,6 +188,16 @@ liver add bier --at "yesterday 21:00" --session new --name "Yesterday"
 pnpm test          # all tests
 pnpm test:bands    # Suite B — validates engine against peer-reviewed pharmacokinetic literature (Spec §1.6)
 ```
+
+## Timezone Handling
+
+All naive timestamps (without explicit timezone offset) are interpreted as **Europe/Berlin** time. This applies to all `--at`, `--from`, and `--to` options across commands.
+
+Examples:
+- `liver add bier --at "2026-05-08T21:00"` → interpreted as 21:00 CEST/CET
+- `liver bac --at "2026-05-08T21:00+02:00"` → interpreted as explicit +02:00 offset
+
+DST transitions are validated: non-existent times (e.g., `2026-03-29T02:30` during spring forward) are rejected with a clear error.
 
 ## Disclaimer
 

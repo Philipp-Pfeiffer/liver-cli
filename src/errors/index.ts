@@ -93,8 +93,8 @@ export const INVALID_SESSION_NAME = () =>
 export const UNKNOWN_PRESET = (name: string) =>
   new LiverError('UNKNOWN_PRESET', `Preset "${name}" does not exist.`, EXIT_CODES.USER_ERROR);
 
-export const BAD_TIME_FORMAT = () =>
-  new LiverError('BAD_TIME_FORMAT', 'Invalid time format.', EXIT_CODES.USER_ERROR);
+export const BAD_TIME_FORMAT = (hint?: string) =>
+  new LiverError('BAD_TIME_FORMAT', 'Invalid time format.', EXIT_CODES.USER_ERROR, hint);
 
 export const CURVE_TOO_LARGE = (suggestedStep: number) =>
   new LiverError(

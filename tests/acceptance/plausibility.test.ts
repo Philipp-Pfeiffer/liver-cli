@@ -79,30 +79,36 @@ describe('Suite C: Plausibility Bands', () => {
     [0.65, 1.05],
   );
 
-  it('C7: bac --at and curve must agree at the same wall-clock point', () => {
+  it('C7: bac --at and curve must agree across a wide time range', () => {
     setProfile(db, 80, 180, 'm', 30);
-    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
-    startSession(db, { stomach: 'some', at: thirtyMinAgo });
-    addDrink(db, { volumeMl: 500, abv: 5.0, at: thirtyMinAgo, stomach: 'some' });
+    const baseTime = new Date(Date.now() - 30 * 60000);
+    // Start session 2h before drink so that -2h offset is still within session
+    const sessionStart = new Date(baseTime.getTime() - 2 * 60 * 60000);
+    startSession(db, { stomach: 'some', at: sessionStart });
+    addDrink(db, { volumeMl: 500, abv: 5.0, at: baseTime, stomach: 'some' });
 
-    const checkTime = new Date(Date.now() + 60 * 60000);
-    const bacResult = getBACAt(db, checkTime) as Record<string, unknown>;
     const curveResult = getCurve(db, {
-      from: new Date(checkTime.getTime() - 5 * 60000),
-      to: new Date(checkTime.getTime() + 5 * 60000),
-      step: 1,
+      from: new Date(baseTime.getTime() - 2 * 60 * 60000),
+      to: new Date(baseTime.getTime() + 4 * 60 * 60000),
+      step: 5,
     }) as Record<string, unknown>;
 
-    const bacValue = (bacResult.bac_promille as number) ?? -1;
     const curve = curveResult.curve as Array<{ at: string; bac_promille: number }>;
-    const curvePoint = curve.find(
-      (p) => Math.abs(new Date(p.at).getTime() - checkTime.getTime()) < 30000,
-    );
 
-    expect(curvePoint).toBeDefined();
-    const curveValue = curvePoint!.bac_promille;
+    for (let offset = -120; offset <= 240; offset += 5) {
+      const target = new Date(baseTime.getTime() + offset * 60000);
+      const bacResult = getBACAt(db, target) as Record<string, unknown>;
+      const bacValue = (bacResult.bac_promille as number) ?? -1;
 
-    // Values must agree within ±0.001‰
-    expect(Math.abs(bacValue - curveValue)).toBeLessThanOrEqual(0.001);
+      const curvePoint = curve.find(
+        (p) => Math.abs(new Date(p.at).getTime() - target.getTime()) < 1000,
+      );
+
+      expect(curvePoint).toBeDefined();
+      const curveValue = curvePoint!.bac_promille;
+
+      // Values must agree within ±0.001‰
+      expect(Math.abs(bacValue - curveValue)).toBeLessThanOrEqual(0.001);
+    }
   });
 });

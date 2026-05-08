@@ -5,9 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0.1] - 2026-05-08
+## [0.2.1] - 2026-05-08
 
 ### Fixed
+- **BUILD-1**: `vendor/` directory now included in npm package `files` array.
+- **VERSION-1**: Version bumped from non-SemVer `0.2.0.1` to SemVer-compliant `0.2.1`.
+- **TEST-1**: Integration tests now assert concrete BAC ranges instead of degenerate `≥ 0` checks.
+- **TIME-1**: Timezone handling is now consistently `Europe/Berlin` everywhere. Naive timestamps without explicit timezone are interpreted as Europe/Berlin time.
+- **TIME-2**: DST edge-cases (non-existent times like 2026-03-29T02:30) are now rejected with a clear error message.
+- **AUTO-CLOSE-1**: `performAutoClose` now respects open drinks — sessions with an unfinished drink are never auto-closed.
+- **TEST-2**: D8 auto-close test is now deterministic (no more timing-dependent flakiness).
+- **CODE-1**: `peak.ts` now uses `nowUTC()` instead of `new Date()` for consistency.
+- **CODE-2**: Removed stale TODO marker from `types.ts`.
+
+### Fixed (from v0.2.0)
 - **BAC Calculation — Factor-10 Overestimation** — `calculateBACAtOffset` already returned promille, but callers in `compute.ts`, `drink.ts`, `stats.ts`, and `peak.ts` multiplied by 10 again. Removed double multiplication. 500 ml × 2.5 % now peaks at ~0.12 ‰ instead of ~1.15 ‰.
 - **Timezone Consistency — `bac` vs `curve`** — `getBACAt` and `getCurve` now both use `nowUTC()` as reference for `drinksToEngine` and pass `offsetMinutes = (targetTime - now) / 60000` to `calculateBACAtOffset`. Both commands produce identical BAC values (±0.001 ‰) for the same wall-clock point.
 - **Auto-Close — Immediate Close after `add` without `--duration`** — `performAutoClose` now enforces a grace period starting at `max(finished_at, started_at + 15 min)`. Prevents sessions from closing immediately after a bolus drink because `minutesUntilSober` can be 0 before absorption begins.

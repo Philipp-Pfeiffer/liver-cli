@@ -1,6 +1,6 @@
 {
   "name": "liver-cli",
-  "version": "0.2.0.1",
+  "version": "0.2.1",
   "description": "BAC tracking CLI",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,6 +9,7 @@
   },
   "files": [
     "dist",
+    "vendor",
     "LICENSE-MIT",
     "README.md",
     "CHANGELOG.md",

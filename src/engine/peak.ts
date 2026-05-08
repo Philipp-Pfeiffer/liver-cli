@@ -4,6 +4,7 @@ import type {
   BACFormula,
 } from './types.js';
 import { generateCurve as ethanolGenerateCurve } from './ethanol.js';
+import { nowUTC } from '../time/index.js';
 
 export function projectedPeakFromCurve(
 	profile: ProfileParams,
@@ -12,7 +13,7 @@ export function projectedPeakFromCurve(
 	startSearch: Date,
 	endSearch: Date,
 ): { timestamp: Date; bac: number } {
-	const now = new Date();
+	const now = nowUTC();
 	const startOffsetMinutes = (startSearch.getTime() - now.getTime()) / 60000;
 	const endOffsetMinutes = (endSearch.getTime() - now.getTime()) / 60000;
 

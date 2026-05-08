@@ -24,7 +24,7 @@ const program = new Command();
 program
   .name('liver')
   .description('BAC tracking CLI')
-  .version('0.2.0.1')
+  .version('0.2.1')
   .option('--human', 'Human-readable output')
   .option('--no-color', 'Disable colors')
   .option('-v, --verbose', 'Verbose logging')

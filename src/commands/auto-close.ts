@@ -13,6 +13,12 @@ export function performAutoClose(db: Database.Database, referenceTime?: Date): n
 
   const profile = requireProfile(db, 'auto-close');
 
+  // If there is an open (unfinished) drink, never auto-close the session
+  const openDrink = db.prepare(
+    'SELECT 1 FROM drinks WHERE session_id = ? AND finished_at IS NULL LIMIT 1'
+  ).get(session.id);
+  if (openDrink) return null;
+
   const lastDrink = db.prepare(
     'SELECT * FROM drinks WHERE session_id = ? AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1'
   ).get(session.id) as { finished_at: string; started_at: string } | undefined;

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { migrate } from '../../src/db/migrate.js';
 import { setProfile } from '../../src/commands/profile.js';
-import { startSession } from '../../src/commands/session.js';
-import { startDrink, stopDrink } from '../../src/commands/drink.js';
+import { startSession, getActiveSession } from '../../src/commands/session.js';
+import { startDrink, stopDrink, addDrink } from '../../src/commands/drink.js';
 import { getStatus } from '../../src/commands/compute.js';
 import { setConfig } from '../../src/config/index.js';
 
@@ -52,5 +52,26 @@ describe('auto-close', () => {
     expect(status.auto_closed_drinks).toBeDefined();
     expect(Array.isArray(status.auto_closed_drinks)).toBe(true);
     expect((status.auto_closed_drinks as Array<unknown>).length).toBe(1);
+  });
+
+  it('should not auto-close when an open drink exists', () => {
+    startSession(db, {});
+    // First add an instant (closed) drink
+    addDrink(db, { volumeMl: 500, abv: 5.0 });
+
+    // Then start an open drink (no duration)
+    startDrink(db, { volumeMl: 500, abv: 5.0 });
+
+    // Far in the future — session should NOT be auto-closed because there's an open drink
+    const farFuture = new Date(Date.now() + 24 * 60 * 60000);
+    const status = getStatus(db, { at: farFuture });
+
+    // Session should still be active
+    expect(status.session_id).toBeDefined();
+
+    // Verify the session was not ended by auto-close
+    const session = getActiveSession(db);
+    expect(session).not.toBeNull();
+    expect(session!.ended_at).toBeNull();
   });
 });

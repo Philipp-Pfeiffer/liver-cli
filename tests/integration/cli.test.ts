@@ -67,14 +67,14 @@ describe('CLI integration', () => {
     expect(result.drink_id).toBeGreaterThan(0);
   });
 
-  it('should show status', () => {
+  it('should show BAC in concrete range 30min after consumption', () => {
     run(dbPath, 'profile set --weight 78 --height 184 --sex m --age 22');
-    run(dbPath, 'session start --name Test --stomach full');
+    run(dbPath, 'session start --name Test --stomach some --at "2026-05-08T12:00"');
     run(dbPath, 'preset set augustiner --vol 500 --abv 5.2');
-    run(dbPath, 'add augustiner');
-    const result = run(dbPath, 'status');
-    expect(result.session_id).toBeGreaterThan(0);
-    expect(result.bac_promille).toBeGreaterThanOrEqual(0);
+    run(dbPath, 'add augustiner --at "2026-05-08T12:00"');
+    const result = run(dbPath, 'bac --at "2026-05-08T12:30"');
+    expect(result.bac_promille).toBeGreaterThanOrEqual(0.20);
+    expect(result.bac_promille).toBeLessThanOrEqual(0.55);
     expect(result.disclaimer).toBeDefined();
   });
 });
