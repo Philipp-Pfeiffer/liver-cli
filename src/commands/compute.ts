@@ -75,10 +75,11 @@ export function getStatus(
   ).all(session.id) as DrinkData[];
 
   const now = options.at ?? nowUTC();
-  const engineDrinks = drinksToEngine(db, drinks, now);
+  const refNow = nowUTC();
+  const engineDrinks = drinksToEngine(db, drinks, refNow);
+  const offsetMinutes = (now.getTime() - refNow.getTime()) / 60000;
 
-  const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
-  const bacPromille = bacPercent * 10;
+  const bacPromille = calculateBACAtOffset(engineProfile, engineDrinks, formula, offsetMinutes);
   const minutesUntil = getMinutesUntilSober(engineProfile, engineDrinks, formula);
   const soberAt = new Date(now.getTime() + minutesUntil * 60000);
 
@@ -136,7 +137,7 @@ export function getStatus(
     now: formatISOLocal(now),
     session_id: session.id,
     session_name: session.name,
-    bac_percent: Math.round(bacPercent * 1000) / 1000,
+    bac_percent: Math.round(bacPromille * 100) / 1000,
     bac_promille: Math.round(bacPromille * 100) / 100,
     trajectory,
     absorbing_drinks: absorbingDrinks,
@@ -188,16 +189,17 @@ export function getBACAt(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
-  const engineDrinks = drinksToEngine(db, drinks, at);
-  const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
-  const bacPromille = bacPercent * 10;
+  const refNow = nowUTC();
+  const engineDrinks = drinksToEngine(db, drinks, refNow);
+  const offsetMinutes = (at.getTime() - refNow.getTime()) / 60000;
+  const bacPromille = calculateBACAtOffset(engineProfile, engineDrinks, formula, offsetMinutes);
 
   const sweetSpot = getSweetSpotDefaults(db);
   const zone = getZone(bacPromille, sweetSpot.min, sweetSpot.max);
 
   return {
     at: formatISOLocal(at),
-    bac_percent: Math.round(bacPercent * 1000) / 1000,
+    bac_percent: Math.round(bacPromille * 100) / 1000,
     bac_promille: Math.round(bacPromille * 100) / 100,
     zone,
     formula,
@@ -227,11 +229,12 @@ export function getSober(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
-  const at = options.at ?? nowUTC();
-  const engineDrinks = drinksToEngine(db, drinks, at);
+  const now = options.at ?? nowUTC();
+  const refNow = nowUTC();
+  const engineDrinks = drinksToEngine(db, drinks, refNow);
 
   const minutesUntil = getMinutesUntilSober(engineProfile, engineDrinks, formula);
-  const soberAt = new Date(at.getTime() + minutesUntil * 60000);
+  const soberAt = new Date(now.getTime() + minutesUntil * 60000);
 
   return {
     minutes_until_sober: minutesUntil,
@@ -308,11 +311,11 @@ export function getCurve(
   const drinks = drinksRaw;
 
   const curvePoints = [];
+  const engineDrinks = drinksToEngine(db, drinks, now);
   for (let offset = 0; offset <= totalMinutes; offset += stepMinutes) {
     const pointTime = new Date(from.getTime() + offset * 60000);
-    const engineDrinks = drinksToEngine(db, drinks, pointTime);
-    const bacPercent = calculateBACAtOffset(engineProfile, engineDrinks, formula, 0);
-    const bacPromille = bacPercent * 10;
+    const offsetMinutes = (pointTime.getTime() - now.getTime()) / 60000;
+    const bacPromille = calculateBACAtOffset(engineProfile, engineDrinks, formula, offsetMinutes);
 
     curvePoints.push({
       at: formatISOLocal(pointTime),
