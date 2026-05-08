@@ -50,11 +50,20 @@ describe('full workflow', () => {
     expect(stop.drink_id).toBe(start.drink_id);
     
     const status = run(dbPath, 'status');
-    expect(status.bac_promille).toBeGreaterThanOrEqual(0);
     expect(status.disclaimer).toBeDefined();
     
+    // Check BAC at a future point where absorption has progressed
+    const futureTime = new Date(Date.now() + 90 * 60000).toISOString();
+    const bac = run(dbPath, `bac --at "${futureTime}"`);
+    expect(bac.bac_promille).toBeGreaterThanOrEqual(0.30);
+    expect(bac.bac_promille).toBeLessThanOrEqual(1.20);
+    
     const sober = run(dbPath, 'sober');
-    expect(sober.minutes_until_sober).toBeGreaterThanOrEqual(0);
+    if ((status.bac_promille as number) > 0) {
+      expect(sober.minutes_until_sober).toBeGreaterThan(0);
+    } else {
+      expect(sober.minutes_until_sober).toBe(0);
+    }
     
     run(dbPath, 'session end');
     
