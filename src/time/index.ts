@@ -38,6 +38,62 @@ function berlinMidnightToUTC(year: number, month: number, day: number): Date {
   return new Date(utcMs);
 }
 
+function berlinToUTC(year: number, month: number, day: number, hour: number, minute: number, second: number): Date {
+  let utcMs = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  for (let i = 0; i < 5; i++) {
+    const berlinParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: TIMEZONE,
+      year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', second: 'numeric',
+      hour12: false,
+    }).formatToParts(new Date(utcMs));
+
+    const getPart = (type: string) => parseInt(berlinParts.find(p => p.type === type)?.value ?? '0', 10);
+    const bYear = getPart('year');
+    const bMonth = getPart('month');
+    const bDay = getPart('day');
+    const bHour = getPart('hour');
+    const bMinute = getPart('minute');
+    const bSecond = getPart('second');
+
+    const berlinMs = Date.UTC(bYear, bMonth - 1, bDay, bHour, bMinute, bSecond);
+    const targetMs = Date.UTC(year, month - 1, day, hour, minute, second);
+
+    const diff = targetMs - berlinMs;
+    if (Math.abs(diff) < 1000) {
+      break;
+    }
+
+    utcMs += diff;
+  }
+
+  return new Date(utcMs);
+}
+
+function validateBerlinRoundTrip(date: Date, year: number, month: number, day: number, hour: number, minute: number, second: number, originalInput: string): void {
+  const berlinParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIMEZONE,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric',
+    hour12: false,
+  }).formatToParts(date);
+
+  const getPart = (type: string) => parseInt(berlinParts.find(p => p.type === type)?.value ?? '0', 10);
+  const bYear = getPart('year');
+  const bMonth = getPart('month');
+  const bDay = getPart('day');
+  const bHour = getPart('hour');
+  const bMinute = getPart('minute');
+  const bSecond = getPart('second');
+
+  if (bYear !== year || bMonth !== month || bDay !== day || bHour !== hour || bMinute !== minute || bSecond !== second) {
+    throw BAD_TIME_FORMAT(
+      `Time ${originalInput} does not exist in Europe/Berlin (DST transition). Use ${String(bHour).padStart(2, '0')}:${String(bMinute).padStart(2, '0')} or earlier ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}.`
+    );
+  }
+}
+
 export function parseTimestamp(input: string, referenceDate: Date = new Date()): Date {
   // Reject empty/whitespace-only strings
   if (!input || input.trim() === '') {
@@ -58,6 +114,31 @@ export function parseTimestamp(input: string, referenceDate: Date = new Date()):
       throw BAD_TIME_FORMAT();
     }
     return berlinMidnightToUTC(year, month, day);
+  }
+
+  // Fast-path for naive ISO datetime (YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS)
+  const isoDateTimeMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/);
+  if (isoDateTimeMatch) {
+    const [year, month, day] = trimmed.split('T')[0].split('-').map(Number);
+    const timeParts = trimmed.split('T')[1].split(':').map(Number);
+    const hour = timeParts[0];
+    const minute = timeParts[1];
+    const second = timeParts[2] ?? 0;
+
+    if (month < 1 || month > 12) {
+      throw BAD_TIME_FORMAT();
+    }
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day < 1 || day > daysInMonth) {
+      throw BAD_TIME_FORMAT();
+    }
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+      throw BAD_TIME_FORMAT();
+    }
+
+    const result = berlinToUTC(year, month, day, hour, minute, second);
+    validateBerlinRoundTrip(result, year, month, day, hour, minute, second, trimmed);
+    return result;
   }
 
   // Validate YYYY-MM-DD prefix if present
@@ -92,6 +173,19 @@ export function parseTimestamp(input: string, referenceDate: Date = new Date()):
 
   if (isNaN(date.getTime())) {
     throw BAD_TIME_FORMAT();
+  }
+
+  // If input has no explicit timezone, treat parsed time as Berlin-local
+  const hasExplicitTZ = /[+-]\d{2}:?\d{2}|Z$/i.test(trimmed);
+  if (!hasExplicitTZ) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hour = date.getHours();
+    const minute = date.getMinutes();
+    const second = date.getSeconds();
+
+    date = berlinToUTC(year, month, day, hour, minute, second);
   }
 
   if (!result.start.isCertain('year') && !result.start.isCertain('month') && !result.start.isCertain('day')) {
@@ -154,21 +248,21 @@ export function parseDuration(input: string): number {
     if (input === '0') return 0;
     throw INVALID_DURATION();
   }
-  
+
   const value = parseInt(match[1], 10);
   const unit = match[2];
-  
+
   let minutes: number;
   if (unit === 'm') {
     minutes = value;
   } else {
     minutes = value * 60;
   }
-  
+
   if (minutes < 0 || minutes > 24 * 60) {
     throw INVALID_DURATION();
   }
-  
+
   return minutes;
 }
 
