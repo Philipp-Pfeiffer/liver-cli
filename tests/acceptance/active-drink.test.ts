@@ -133,8 +133,9 @@ describe('Active Drink Acceptance Tests (D1-D10)', () => {
     startSession(db, {});
     const startResult = startDrink(db, { volumeMl: 500, abv: 5.0 });
 
-    // 60 minutes later (45min default + 15min grace)
-    const future = new Date(Date.now() + 60 * 60000);
+    // Deterministic: calculate future relative to graceEnd, not Date.now()
+    const graceEnd = new Date(startResult.finished_at).getTime() + 15 * 60000;
+    const future = new Date(graceEnd + 60000); // 1 min after graceEnd
     const status = getStatus(db, { at: future });
 
     expect(status.auto_closed_drinks).toBeDefined();
