@@ -31,6 +31,14 @@ export function getActiveSession(db: Database.Database): SessionData | null {
   return session ?? null;
 }
 
+export function getSessionById(db: Database.Database, id: number): SessionData | null {
+  const session = db.prepare(
+    'SELECT * FROM sessions WHERE id = ?'
+  ).get(id) as SessionData | undefined;
+  
+  return session ?? null;
+}
+
 export function requireActiveSession(db: Database.Database): SessionData {
   const session = getActiveSession(db);
   if (!session) {

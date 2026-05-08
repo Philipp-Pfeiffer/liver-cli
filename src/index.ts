@@ -487,6 +487,7 @@ program
   .option('--from <T>', 'Start time')
   .option('--to <T>', 'End time')
   .option('--step <minutes>', 'Step size in minutes', parseInt)
+  .option('--session <id>', 'Session ID (for ended sessions)', parseInt)
   .option('--export <format>', 'Export format (svg)')
   .action((options, cmd) => {
     handleCommand(() => {
@@ -498,6 +499,7 @@ program
         to,
         step: options.step,
         formula: getFormula(cmd),
+        sessionId: options.session,
       });
       db.close();
       

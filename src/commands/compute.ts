@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 import type { ProfileParams, DrinkInput, BACFormula } from '../engine/types.js';
 import { calculateBACAtOffset, getMinutesUntilSober, resolveFormula, getTrajectory, getAbsorbingDrinkCount } from '../engine/index.js';
 import { requireProfile } from './profile.js';
-import { requireActiveSession, getActiveSession, resolveStomachStateAt } from './session.js';
+import { requireActiveSession, getActiveSession, getSessionById, resolveStomachStateAt } from './session.js';
 import { getSweetSpotDefaults, getConfig } from '../config/index.js';
 import { formatISOUTC, formatISOLocal, nowUTC } from '../time/index.js';
 import { CURVE_TOO_LARGE, SESSION_NOT_ACTIVE } from '../errors/index.js';
@@ -250,10 +250,13 @@ export function getCurve(
     to?: Date;
     step?: number;
     formula?: BACFormula;
+    sessionId?: number;
   } = {},
 ): Record<string, unknown> {
   const profile = requireProfile(db, 'curve');
-  const session = getActiveSession(db);
+  const session = options.sessionId
+    ? getSessionById(db, options.sessionId)
+    : getActiveSession(db);
 
   if (!session) {
     throw SESSION_NOT_ACTIVE();
