@@ -79,7 +79,38 @@ describe('Suite C: Plausibility Bands', () => {
     [0.65, 1.05],
   );
 
-  it('C7: bac --at and curve must agree across a wide time range', () => {
+  it('C7a: Reference scenario age 30 (m, 80kg, 180cm, Watson, empty, 1×500ml@5%)', () => {
+    setProfile(db, 80, 180, 'm', 30);
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'empty', at: thirtyMinAgo });
+    const result = addDrink(db, { volumeMl: 500, abv: 5.0, at: thirtyMinAgo, stomach: 'empty' });
+    const peak = result.bac_projected_peak_promille;
+    expect(peak).toBeGreaterThanOrEqual(0.30);
+    expect(peak).toBeLessThanOrEqual(0.50);
+
+    const sixHoursLater = new Date(thirtyMinAgo.getTime() + 6 * 60 * 60000);
+    const bacResult = getBACAt(db, sixHoursLater) as Record<string, unknown>;
+    const bac6h = bacResult.bac_promille as number;
+    expect(bac6h).toBeLessThanOrEqual(0.05);
+  });
+
+  it('C7b: Reference scenario age 21 (m, 80kg, 180cm, Watson, empty, 1×500ml@5%)', () => {
+    setProfile(db, 80, 180, 'm', 21);
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60000);
+    startSession(db, { stomach: 'empty', at: thirtyMinAgo });
+
+    const result = addDrink(db, { volumeMl: 500, abv: 5.0, at: thirtyMinAgo, stomach: 'empty' });
+    const peak = result.bac_projected_peak_promille;
+    expect(peak).toBeGreaterThanOrEqual(0.30);
+    expect(peak).toBeLessThanOrEqual(0.50);
+
+    const sixHoursLater = new Date(thirtyMinAgo.getTime() + 6 * 60 * 60000);
+    const bacResult = getBACAt(db, sixHoursLater) as Record<string, unknown>;
+    const bac6h = bacResult.bac_promille as number;
+    expect(bac6h).toBeLessThanOrEqual(0.04);
+  });
+
+  it('C8: bac --at and curve must agree across a wide time range', () => {
     setProfile(db, 80, 180, 'm', 30);
     const baseTime = new Date(Date.now() - 30 * 60000);
     // Start session 2h before drink so that -2h offset is still within session

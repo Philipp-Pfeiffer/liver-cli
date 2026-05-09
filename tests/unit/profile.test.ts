@@ -20,6 +20,13 @@ describe('profile commands', () => {
     expect(profile?.sex).toBe('m');
     expect(profile?.age).toBe(22);
     expect(profile?.preferred_formula).toBe('watson');
+    expect(profile?.weight_source).toBe('estimated');
+  });
+
+  it('should set weight_source', () => {
+    setProfile(db, 78, 184, 'm', 22, undefined, 'measured');
+    const profile = getProfile(db);
+    expect(profile?.weight_source).toBe('measured');
   });
   
   it('should require profile', () => {

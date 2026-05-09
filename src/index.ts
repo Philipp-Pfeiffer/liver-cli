@@ -24,7 +24,7 @@ const program = new Command();
 program
   .name('liver')
   .description('BAC tracking CLI')
-  .version('0.2.1')
+  .version('0.3.0')
   .option('--human', 'Human-readable output')
   .option('--no-color', 'Disable colors')
   .option('-v, --verbose', 'Verbose logging')
@@ -117,10 +117,11 @@ profileCmd
   .requiredOption('--sex <m|f|o>', 'Sex')
   .requiredOption('--age <years>', 'Age', parseInt)
   .option('--formula <watson|widmark>', 'Preferred formula')
+  .option('--weight-source <measured|estimated>', 'Weight source')
   .action((options, cmd) => {
     handleCommand(() => {
       const db = initDb();
-      const result = setProfile(db, options.weight, options.height, options.sex, options.age, options.formula);
+      const result = setProfile(db, options.weight, options.height, options.sex, options.age, options.formula, options.weightSource);
       db.close();
       return result;
     }, cmd);

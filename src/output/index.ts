@@ -55,15 +55,41 @@ export function outputError(error: LiverError, options: OutputOptions): void {
   }
 }
 
+function formatBACHuman(data: Record<string, unknown>): string | undefined {
+  const bac = data.bac_promille as number | undefined;
+  const ci = data.bac_promille_ci95 as [number, number] | undefined;
+  const basis = data.ci_basis as string | undefined;
+
+  if (bac !== undefined && ci !== undefined) {
+    const [lo, hi] = ci;
+    const warning = basis === 'weight_estimated' ? '⚠ Gewicht geschätzt – ' : '';
+    return `${warning}BAC: ${bac.toFixed(2)} ‰  (95% KI: ${lo.toFixed(2)}–${hi.toFixed(2)})`;
+  }
+  return undefined;
+}
+
 function formatHuman(data: Record<string, unknown>): string {
-  return Object.entries(data)
+  const bacLine = formatBACHuman(data);
+  const skipKeys = new Set<string>();
+  if (bacLine) {
+    skipKeys.add('bac_percent');
+    skipKeys.add('bac_promille_ci95');
+    skipKeys.add('ci_basis');
+  }
+
+  const lines = Object.entries(data)
+    .filter(([key]) => !skipKeys.has(key))
     .map(([key, value]) => {
+      if (key === 'bac_promille' && bacLine) {
+        return bacLine;
+      }
       if (Array.isArray(value)) {
         return `${bold(key)}:\n${value.map(v => `  - ${JSON.stringify(v)}`).join('\n')}`;
       }
       return `${bold(key)}: ${JSON.stringify(value)}`;
-    })
-    .join('\n');
+    });
+
+  return lines.join('\n');
 }
 
 export function formatTable(headers: string[], rows: string[][]): string {

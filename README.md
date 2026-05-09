@@ -36,6 +36,13 @@ liver preset set shot --vol 40 --abv 40
 - `--sex <m\|f\|o>` — Sex (male/female/other)
 - `--age <n>` — Age (16–120)
 - `--formula <watmark\|watson>` — Preferred BAC formula
+- `--weight-source <measured\|estimated>` — Weight source (default: `estimated`)
+
+> `--weight-source` (default: `estimated`) gibt an, ob das `--weight` Profil-Gewicht
+> per Waage gemessen (`measured`) oder geschätzt (`estimated`) wurde. Der Wert steuert
+> die Breite der 95%-Konfidenzintervalle auf BAC-Outputs (CV 0.11 vs. 0.19, ±22% vs. ±37%).
+> Bei `estimated` wird `liver --human` einen `⚠ Gewicht geschätzt`-Prefix vor BAC-Werten anzeigen.
+> Quelle: ADR-003 §4 (Maskell & Cooper 2020).
 
 ### Preset
 
@@ -146,6 +153,57 @@ liver preset set shot --vol 40 --abv 40
 | `-v, --verbose` | Verbose logging |
 | `--formula <watson\|widmark>` | BAC formula override |
 
+## Output Formats
+
+### JSON (Default)
+
+All commands output structured JSON to stdout by default. Use `--human` for a condensed text representation.
+
+**BAC-emittierende Commands** (`status`, `bac`, `curve`, `sober`, `stats`) enthalten ab v0.3.0 zusätzlich Konfidenzintervalle:
+
+```json
+{
+  "bac_promille": 0.42,
+  "bac_promille_ci95": [0.33, 0.51],
+  "ci_basis": "weight_measured"
+}
+```
+
+- `bac_promille_ci95` — 95% Konfidenzintervall als `[low, high]` Tupel
+- `ci_basis` — `weight_measured` oder `weight_estimated`, je nach `profile.weight_source`
+
+Die Intervalle verwenden CV = 0.11 für `measured` und CV = 0.19 für `estimated` (Maskell & Cooper 2020).
+
+### SVG Export
+
+`liver curve` can render the BAC curve as a standalone SVG:
+
+```bash
+liver curve --export svg > meine-kurve.svg
+liver curve --from "20:00" --to "01:00" --step 5m --export svg > abend.svg
+```
+
+The SVG is:
+- **Valid XML** — viewable directly in browsers, Markdown viewers, or via `xmllint`
+- **Resolution-independent** — no pixel density to choose
+- **Dependency-free** — no additional tools or `node_modules` calls needed
+
+**Visualized:**
+- BAC curve over time (blue line)
+- Zone background bands: Below Sweet Spot (green), Sweet Spot (yellow), Caution (orange), Danger (red)
+  — configured via `liver config set zones.sweet_spot_min/max`
+- Drink markers as dashed vertical lines with labels
+- Peak annotation (red dot + value)
+- X-axis in local time (Europe/Berlin), Y-axis in ‰
+- Disclaimer and zone legend
+
+**Limits:**
+- Curve cap from §10.3 applies: `(to − from) / step ≤ 1000` points, otherwise `CURVE_TOO_LARGE`.
+
+**Available since:** v0.2.0.
+
+An example output is available at [`docs/samples/curve-example.svg`](docs/samples/curve-example.svg).
+
 ## Examples
 
 ### Track a drinking session
@@ -167,13 +225,6 @@ liver curve --from 19:30 --step 5m
 
 # End session
 liver session end
-```
-
-### SVG export
-
-```bash
-liver curve --export svg > meine-kurve.svg
-liver curve --from "2026-05-03T14:00" --to "2026-05-03T22:00" --step 15m --export svg
 ```
 
 ### Backdated logging

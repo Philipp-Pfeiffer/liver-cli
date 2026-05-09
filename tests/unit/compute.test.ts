@@ -23,6 +23,8 @@ describe('computation commands', () => {
     const status = getStatus(db);
 
     expect(status.bac_promille).toBeGreaterThan(0);
+    expect(status.bac_promille_ci95).toBeDefined();
+    expect(status.ci_basis).toBeDefined();
     expect(status.minutes_until_sober).toBeGreaterThan(0);
     expect(status.drinks_in_session).toBe(1);
     expect(status.disclaimer).toBeDefined();
@@ -37,6 +39,8 @@ describe('computation commands', () => {
     const result = getBACAt(db, new Date(now.getTime() + 30 * 60000));
 
     expect(result.bac_promille).toBeGreaterThan(0);
+    expect(result.bac_promille_ci95).toBeDefined();
+    expect(result.ci_basis).toBeDefined();
     expect(result.zone).toBeDefined();
     expect(result.formula).toBe('watson');
   });
@@ -66,6 +70,8 @@ describe('computation commands', () => {
     const status = getStatus(db2);
     expect(status.session_id).toBeNull();
     expect(status.bac_promille).toBe(0);
+    expect(status.bac_promille_ci95).toEqual([0, 0]);
+    expect(status.ci_basis).toBe('weight_estimated');
     expect(status.warnings).toContain('no_active_session');
     expect(status.disclaimer).toBeDefined();
   });

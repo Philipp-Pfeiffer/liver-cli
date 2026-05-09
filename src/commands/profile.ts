@@ -14,6 +14,7 @@ export interface ProfileData {
   sex: string;
   age: number;
   preferred_formula: string | null;
+  weight_source: 'measured' | 'estimated';
 }
 
 export function setProfile(
@@ -23,6 +24,7 @@ export function setProfile(
   sex: string,
   age: number,
   formula?: string,
+  weightSource?: 'measured' | 'estimated',
 ): { ok: true } {
   validateWeight(weightKg);
   validateHeight(heightCm);
@@ -33,11 +35,15 @@ export function setProfile(
     throw INVALID_CONFIG_KEY();
   }
   
+  if (weightSource && !['measured', 'estimated'].includes(weightSource)) {
+    throw INVALID_CONFIG_KEY();
+  }
+  
   db.prepare('DELETE FROM profile').run();
   
   db.prepare(
-    'INSERT INTO profile (weight_kg, height_cm, sex, age, preferred_formula) VALUES (?, ?, ?, ?, ?)'
-  ).run(weightKg, heightCm, sex, age, formula ?? null);
+    'INSERT INTO profile (weight_kg, height_cm, sex, age, preferred_formula, weight_source) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(weightKg, heightCm, sex, age, formula ?? null, weightSource ?? 'estimated');
   
   return { ok: true };
 }

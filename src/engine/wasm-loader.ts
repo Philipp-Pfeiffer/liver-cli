@@ -42,12 +42,16 @@ function toEthanolDrink(d: DrinkInput, offsetMinutes: number) {
 }
 
 function toEthanolProfile(p: ProfileParams) {
-  return wasm().createUserProfile(
-    p.weightKg,
-    SEX_MAP[p.sex],
-    p.heightCm,
-    p.age,
-  );
+  const profile: Record<string, unknown> = {
+    weight_kg: p.weightKg,
+    biological_sex: SEX_MAP[p.sex],
+    height_cm: p.heightCm,
+    age: p.age,
+  };
+  if (p.beta !== undefined) {
+    profile.beta = p.beta;
+  }
+  return profile;
 }
 
 export function calculateBACAtOffset(
