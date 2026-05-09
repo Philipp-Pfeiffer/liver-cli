@@ -1,6 +1,8 @@
 import type Database from 'better-sqlite3';
 import type { ProfileParams, DrinkInput, BACFormula } from '../engine/types.js';
 import { calculateBACAtOffset, getMinutesUntilSober, resolveFormula, getTrajectory, getAbsorbingDrinkCount } from '../engine/index.js';
+import { defaultBeta, clampBeta, effectiveBeta } from '../engine/beta.js';
+import type { StomachState } from '../engine/beta.js';
 import { requireProfile } from './profile.js';
 import { requireActiveSession, getActiveSession, resolveStomachStateAt } from './session.js';
 import { getSweetSpotDefaults, getConfig } from '../config/index.js';
@@ -8,12 +10,28 @@ import { formatISOUTC, formatISOLocal, nowUTC } from '../time/index.js';
 import { CURVE_TOO_LARGE, SESSION_NOT_ACTIVE } from '../errors/index.js';
 import type { DrinkData } from './drink.js';
 
-export function profileToEngine(profile: { weight_kg: number; height_cm: number; sex: string; age: number }): ProfileParams {
+const CV = { measured: 0.11, estimated: 0.19 } as const;
+
+export function ci95(bac: number, weightSource: 'measured' | 'estimated') {
+  const cv = CV[weightSource];
+  return { lo: Math.max(0, bac * (1 - 2 * cv)), hi: bac * (1 + 2 * cv) };
+}
+
+export function profileToEngine(
+  profile: { weight_kg: number; height_cm: number; sex: string; age: number; weight_source?: 'measured' | 'estimated' | null },
+  stomachState?: StomachState,
+): ProfileParams {
+  const sex = profile.sex === 'f' ? 'female' : profile.sex === 'o' ? 'other' : 'male';
+  const baseBeta = defaultBeta(profile.sex as 'm' | 'f' | 'o', profile.age);
+  const beta = stomachState ? clampBeta(effectiveBeta(baseBeta, stomachState)) : clampBeta(baseBeta);
+
   return {
     weightKg: profile.weight_kg,
     heightCm: profile.height_cm,
-    sex: profile.sex === 'f' ? 'female' : profile.sex === 'o' ? 'other' : 'male',
+    sex,
     age: profile.age,
+    beta,
+    weightSource: profile.weight_source ?? 'estimated',
   };
 }
 
@@ -45,6 +63,16 @@ function getZone(bacPromille: number, sweetMin: number, sweetMax: number): strin
   return 'danger';
 }
 
+function addCIFields(
+  response: Record<string, unknown>,
+  bacPromille: number,
+  weightSource: 'measured' | 'estimated',
+) {
+  const { lo, hi } = ci95(bacPromille, weightSource);
+  response.bac_promille_ci95 = [Math.round(lo * 100) / 100, Math.round(hi * 100) / 100];
+  response.ci_basis = weightSource === 'measured' ? 'weight_measured' : 'weight_estimated';
+}
+
 export function getStatus(
   db: Database.Database,
   options: { formula?: BACFormula; at?: Date } = {},
@@ -57,6 +85,8 @@ export function getStatus(
       session_id: null,
       session_name: null,
       bac_promille: 0,
+      bac_promille_ci95: [0, 0],
+      ci_basis: 'weight_estimated',
       minutes_until_sober: 0,
       warnings: ['no_active_session'],
       disclaimer: 'estimate, not legally/medically valid',
@@ -68,13 +98,14 @@ export function getStatus(
     options.formula,
   );
 
-  const engineProfile = profileToEngine(profile);
+  const now = options.at ?? nowUTC();
+  const stomachStateNow = resolveStomachStateAt(db, session.id, now) as StomachState;
+  const engineProfile = profileToEngine(profile, stomachStateNow);
 
   const drinks = db.prepare(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
-  const now = options.at ?? nowUTC();
   const refNow = nowUTC();
   const engineDrinks = drinksToEngine(db, drinks, refNow);
   const offsetMinutes = (now.getTime() - refNow.getTime()) / 60000;
@@ -145,9 +176,11 @@ export function getStatus(
     sober_at: formatISOLocal(soberAt),
     zone,
     drinks_in_session: drinks.length,
-    stomach_state_now: resolveStomachStateAt(db, session.id, now),
+    stomach_state_now: stomachStateNow,
     disclaimer: 'estimate, not legally/medically valid',
   };
+
+  addCIFields(response, bacPromille, engineProfile.weightSource ?? 'estimated');
 
   if (openDrinks.length > 0) {
     response.open_drinks = openDrinks;
@@ -183,7 +216,8 @@ export function getBACAt(
     throw SESSION_NOT_ACTIVE();
   }
 
-  const engineProfile = profileToEngine(profile);
+  const stomachStateAt = resolveStomachStateAt(db, session.id, at) as StomachState;
+  const engineProfile = profileToEngine(profile, stomachStateAt);
 
   const drinks = db.prepare(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
@@ -197,7 +231,7 @@ export function getBACAt(
   const sweetSpot = getSweetSpotDefaults(db);
   const zone = getZone(bacPromille, sweetSpot.min, sweetSpot.max);
 
-  return {
+  const response: Record<string, unknown> = {
     at: formatISOLocal(at),
     bac_percent: Math.round(bacPromille * 100) / 1000,
     bac_promille: Math.round(bacPromille * 100) / 100,
@@ -205,6 +239,10 @@ export function getBACAt(
     formula,
     disclaimer: 'estimate, not legally/medically valid',
   };
+
+  addCIFields(response, bacPromille, engineProfile.weightSource ?? 'estimated');
+
+  return response;
 }
 
 export function getSober(
@@ -223,13 +261,14 @@ export function getSober(
     options.formula,
   );
 
-  const engineProfile = profileToEngine(profile);
+  const now = options.at ?? nowUTC();
+  const stomachStateNow = resolveStomachStateAt(db, session.id, now) as StomachState;
+  const engineProfile = profileToEngine(profile, stomachStateNow);
 
   const drinks = db.prepare(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
   ).all(session.id) as DrinkData[];
 
-  const now = options.at ?? nowUTC();
   const refNow = nowUTC();
   const engineDrinks = drinksToEngine(db, drinks, refNow);
 
@@ -271,7 +310,8 @@ export function getCurve(
   if (options.to) {
     to = options.to;
   } else {
-    const engineProfile = profileToEngine(profile);
+    const stomachStateNow = resolveStomachStateAt(db, session.id, now) as StomachState;
+    const engineProfile = profileToEngine(profile, stomachStateNow);
     const drinks = db.prepare(
       'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
     ).all(session.id) as DrinkData[];
@@ -292,7 +332,8 @@ export function getCurve(
     throw CURVE_TOO_LARGE(roundedStep);
   }
 
-  const engineProfile = profileToEngine(profile);
+  const stomachStateNow = resolveStomachStateAt(db, session.id, now) as StomachState;
+  const engineProfile = profileToEngine(profile, stomachStateNow);
 
   const drinksRaw = db.prepare(
     'SELECT * FROM drinks WHERE session_id = ? ORDER BY started_at'
@@ -316,10 +357,12 @@ export function getCurve(
     const pointTime = new Date(from.getTime() + offset * 60000);
     const offsetMinutes = (pointTime.getTime() - now.getTime()) / 60000;
     const bacPromille = calculateBACAtOffset(engineProfile, engineDrinks, formula, offsetMinutes);
+    const { lo, hi } = ci95(bacPromille, engineProfile.weightSource ?? 'estimated');
 
     curvePoints.push({
       at: formatISOLocal(pointTime),
       bac_promille: Math.round(bacPromille * 100) / 100,
+      bac_promille_ci95: [Math.round(lo * 100) / 100, Math.round(hi * 100) / 100],
       zone: getZone(bacPromille, sweetSpot.min, sweetSpot.max),
     });
   }
@@ -333,6 +376,7 @@ export function getCurve(
       step_min: stepMinutes,
       points: curvePoints.length,
       formula,
+      ci_basis: engineProfile.weightSource === 'measured' ? 'weight_measured' : 'weight_estimated',
     },
     disclaimer: 'estimate, not legally/medically valid',
   };

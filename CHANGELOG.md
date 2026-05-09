@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-09
+
+### Added
+- β default now sex- and age-aware (Barinskaia 2009, Dettling 2007, Maskell 2024)
+- Fed-state β-multiplier ×1.20/×1.40 for stomach=some/full (Jones 1994)
+- Confidence intervals (95% KI) on all BAC outputs (Maskell & Cooper 2020)
+- New profile field: weight_source (measured|estimated)
+- New acceptance scenario for age 21 reference (§1.6)
+
+### Changed
+- Stomach factor "some" documented at 0.80 in TS layer (conservative interpolation between empty=1.00 and full=0.65; Jones 1994 only validated full=0.64). **Absorption-side application deferred until WASM rebuild — see ADR-005 / v0.4.0+.** No runtime behavior change from this entry alone.
+
 ## [0.2.1] - 2026-05-08
 
 ### Fixed
@@ -35,6 +47,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > - **Bug 3:** `liver bac --at` and `liver curve` use different time-reference logic, causing inconsistent BAC values for the same timestamp.
 
 ### Added
+- **SVG export for `liver curve`** — neuer `--export svg` Flag emittiert den BAC-Verlauf als standalone SVG-XML zu stdout. Output enthält:
+  - BAC-Kurve über die Zeit (blau)
+  - Sweet-Spot- / Caution- / Danger-Zonen als Hintergrund-Bands
+  - Drink-Marker an `started_at` jedes Drinks (gestrichelte Linien + Labels)
+  - Peak-Annotation (roter Punkt + Wert), X/Y-Achsen, Legend, Disclaimer
+  - Curve-Cap §10.3 gilt unverändert (`CURVE_TOO_LARGE` bei >1000 Punkten)
+  - Beispiel: `liver curve --export svg > curve.svg`. Siehe README "SVG Export" und `docs/samples/curve-example.svg`.
 - **Phase 3: Active Drink Features** — Volume-Duration-Tabelle, Single-Open-Drink-Rule, `liver drink update`, Peak-Time via Curve-Sampling
 - `src/lib/duration.ts` — `VOLUME_DURATION_TABLE` mit 7 Buckets (Shot→Maß+) und `resolveDefaultDuration(volumeMl, config)`
 - `src/engine/peak.ts` — `projectedPeakFromCurve()` nutzt `generateCurve` mit 60s-Schritten für numerische Peak-Suche

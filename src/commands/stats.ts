@@ -3,7 +3,7 @@ import { formatISOUTC, nowUTC } from '../time/index.js';
 import type { BACFormula } from '../engine/types.js';
 import { resolveFormula, calculateBACAtOffset } from '../engine/index.js';
 import { requireProfile } from './profile.js';
-import { profileToEngine, drinksToEngine } from './compute.js';
+import { profileToEngine, drinksToEngine, ci95 } from './compute.js';
 import { getSweetSpotDefaults } from '../config/index.js';
 import type { DrinkData } from './drink.js';
 
@@ -30,8 +30,12 @@ export interface StatsResult {
   total_sessions: number;
   total_pure_alcohol_g: number;
   avg_peak_promille: number;
+  avg_peak_promille_ci95: [number, number];
   avg_session_promille: number;
+  avg_session_promille_ci95: [number, number];
   max_session_promille: number;
+  max_session_promille_ci95: [number, number];
+  ci_basis: 'weight_measured' | 'weight_estimated';
   by_preset: PresetStats[];
 }
 
@@ -279,8 +283,11 @@ export function getStats(
   let avgSessionPromille = 0;
   let maxSessionPromille = 0;
 
+  let weightSource: 'measured' | 'estimated' = 'estimated';
+
   if (sessions.length > 0) {
     const profile = requireProfile(db, 'stats');
+    weightSource = profile.weight_source ?? 'estimated';
     const formula = resolveFormula(
       profile.preferred_formula as BACFormula | undefined,
       options.formula,
@@ -320,6 +327,13 @@ export function getStats(
     maxSessionPromille = Math.round(maxPeak * 100) / 100;
   }
 
+  // TODO(v0.4.0): stats CI currently applies CV directly to averaged values,
+  // which overstates uncertainty by √N. Replace with proper SEM-based
+  // propagation once we decide between unweighted average vs session-weighted.
+  const avgPeakCI = ci95(avgPeakPromille, weightSource);
+  const avgSessionCI = ci95(avgSessionPromille, weightSource);
+  const maxSessionCI = ci95(maxSessionPromille, weightSource);
+
   return {
     period: {
       from: formatBerlinDate(from),
@@ -334,8 +348,12 @@ export function getStats(
     total_sessions: sessions.length,
     total_pure_alcohol_g: Math.round(totalPureAlcohol * 100) / 100,
     avg_peak_promille: avgPeakPromille,
+    avg_peak_promille_ci95: [Math.round(avgPeakCI.lo * 100) / 100, Math.round(avgPeakCI.hi * 100) / 100] as [number, number],
     avg_session_promille: avgSessionPromille,
+    avg_session_promille_ci95: [Math.round(avgSessionCI.lo * 100) / 100, Math.round(avgSessionCI.hi * 100) / 100] as [number, number],
     max_session_promille: maxSessionPromille,
+    max_session_promille_ci95: [Math.round(maxSessionCI.lo * 100) / 100, Math.round(maxSessionCI.hi * 100) / 100] as [number, number],
+    ci_basis: weightSource === 'measured' ? 'weight_measured' : 'weight_estimated',
     by_preset: presetStats.map(p => ({
       ...p,
       total_pure_alcohol_g: Math.round(p.total_pure_alcohol_g * 100) / 100,
