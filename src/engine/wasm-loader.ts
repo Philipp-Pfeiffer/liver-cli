@@ -3,6 +3,8 @@
  * Call initWasm() once at process start (typically in src/index.ts).
  */
 import { createRequire } from 'module';
+import { existsSync } from 'fs';
+import { fileURLToPath } from 'url';
 import type {
   ProfileParams,
   DrinkInput,
@@ -14,15 +16,33 @@ import { STOMACH_MAP, SEX_MAP } from './types.js';
 
 const require = createRequire(import.meta.url);
 
-let wasmModule: typeof import('../../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js') | null = null;
+type WasmModule = typeof import('../../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js');
+
+let wasmModule: WasmModule | null = null;
+
+// Where the ethanol-rs bindings live, relative to this module:
+//   dist/index.js         -> ./vendor/...      (copied by tsup.config.ts, the normal case)
+//   dist/index.js         -> ../vendor/...     (package root, fallback for an old dist/)
+//   src/engine/*.ts (dev) -> ../../vendor/...  (tsx / vitest)
+const WASM_CANDIDATES = [
+  './vendor/ethanol-rs-pkg/ethanol_rs_wasm.js',
+  '../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js',
+  '../../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js',
+];
+
+export function resolveWasmPath(): string {
+  const tried: string[] = [];
+  for (const candidate of WASM_CANDIDATES) {
+    const path = fileURLToPath(new URL(candidate, import.meta.url));
+    tried.push(path);
+    if (existsSync(path)) return path;
+  }
+  throw new Error(`ethanol-rs WASM bindings not found (tried: ${tried.join(', ')}) — rebuild with "npm run build"`);
+}
 
 export function initWasm(): void {
   if (!wasmModule) {
-    try {
-      wasmModule = require('../../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js');
-    } catch {
-      wasmModule = require('../vendor/ethanol-rs-pkg/ethanol_rs_wasm.js');
-    }
+    wasmModule = require(resolveWasmPath()) as WasmModule;
   }
 }
 

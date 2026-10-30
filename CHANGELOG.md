@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Build: `vendor/ethanol-rs-pkg` is now copied into `dist/vendor/` by `tsup.config.ts` (`onSuccess`), so `dist/` is self-contained. The WASM loader resolves `./vendor` (dist), `../vendor` (package root) and `../../vendor` (src, dev) by existence instead of a silent try/catch, and fails with the list of checked paths. Replaces the manual "copy vendor/ + patch `../../vendor` → `./vendor`" step after `npm run build`.
+- Dependencies: `better-sqlite3` ^11 → ^12.11.1 (v11 does not compile against Node 26).
+
+### Added
+- Regression test `tests/integration/build-vendor.test.ts` (runs `dist/` without a `vendor/` folder next to it).
+
 ## [0.3.0] - 2026-05-09
 
 ### Added
